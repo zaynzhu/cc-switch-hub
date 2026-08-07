@@ -16,6 +16,7 @@ def get_today_usage(db_path):
         """).fetchone()
         last = db.execute("""
             SELECT model FROM proxy_request_logs
+             WHERE date(created_at,'unixepoch','localtime')=date('now','localtime')
              ORDER BY created_at DESC, rowid DESC LIMIT 1
         """).fetchone()
     except sqlite3.OperationalError:

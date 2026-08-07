@@ -1,4 +1,4 @@
-import sqlite3, time, os
+import sqlite3, time
 from usage_reader import get_today_usage
 
 def _make_db(path):
@@ -39,3 +39,13 @@ def test_missing_table(tmp_path):
     p = str(tmp_path / "empty.db")
     sqlite3.connect(p).close()  # 建空库无表
     assert get_today_usage(p) == (0, 0.0, None)
+
+def test_no_data_today_but_yesterday_exists(tmp_path):
+    p = str(tmp_path / "t.db")
+    db = _make_db(p)
+    now = int(time.time())
+    # 仅插入昨日一条（无今日记录）
+    db.execute("INSERT INTO proxy_request_logs VALUES (?,?,?,?,?,?,?)",
+               (now - 90000, 'kimi-k3', 9999, 9999, 0, 0, 9.99))
+    db.commit(); db.close()
+    assert get_today_usage(p) == (0, 0.0, None)  # 今日无数据时 model 必须为 None
