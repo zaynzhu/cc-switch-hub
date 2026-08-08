@@ -6,7 +6,7 @@
 
 **Architecture:** 单 Python 进程（PySide6），四个职责分离的模块：`usage_reader` 只读聚合 db 今日用量、`quota_fetcher` 读 Kimi 配置并查额度接口、`display_text` 纯函数格式化显示文本、`widget`+`main` 负责 GUI 与调度。用量全部汇总（db 明细不带厂商标识），额度固定查 Kimi。
 
-**Tech Stack:** Python 3.12（Anaconda，`E:/program/anaconda3/python.exe`）、PySide6、sqlite3（标准库）、urllib（标准库）、pytest 9.0.3
+**Tech Stack:** Python 3.12（tool python，`E:/program/tool/python/python.exe`）、PySide6、sqlite3（标准库）、urllib（标准库）、pytest 9.0.3
 
 ## Global Constraints
 
@@ -753,7 +753,7 @@ git commit -m "feat: 添加 main 调度托盘与位置记忆"
 ```powershell
 $ws = New-Object -ComObject WScript.Shell
 $lnk = $ws.CreateShortcut("$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Startup\cc-switch-hub.lnk")
-$lnk.TargetPath = "E:\program\anaconda3\pythonw.exe"
+$lnk.TargetPath = "E:\program\tool\python\pythonw.exe"
 $lnk.Arguments = "E:\codex\cc-switch-hub\src\main.py"
 $lnk.WorkingDirectory = "E:\codex\cc-switch-hub"
 $lnk.Save()
@@ -772,7 +772,7 @@ Expected: 重启后窄条自动出现（pythonw 无控制台窗口）
 
 ## 验收标准
 
-1. `E:/program/anaconda3/python.exe -m pytest tests/ -v` 全部通过（usage_reader 4 + quota_fetcher 4 + display_text 7 + widget 1 = 16 项）
+1. `"E:/program/tool/python/python.exe" -m pytest tests/ -v` 全部通过（usage_reader 5 + quota_fetcher 5 + display_text 7 + widget 2 = 19 项）
 2. `pythonw src/main.py` 启动后，右下角出现窄条，显示形如「今日 69.4M tok · $60.73 · 近用 kimi-k3 | 5h 78% · 周 68%」
 3. 窄条数据与 cc-switch 托盘点开看到的数字一致（今日 token、花费、Kimi 周额度）
 4. 关闭 cc-switch 后窄条不崩（db 只读连接，显示上次值）
