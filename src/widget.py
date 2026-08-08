@@ -1,4 +1,4 @@
-from PySide6.QtWidgets import QWidget, QLabel
+from PySide6.QtWidgets import QWidget, QLabel, QApplication, QMenu
 from PySide6.QtCore import Qt, Signal
 from display_text import build_display_text, quota_color
 
@@ -13,6 +13,7 @@ COLORS = {
 
 class UsageWidget(QWidget):
     moved = Signal()  # 拖动结束时发出，供 main 保存位置
+    refresh_requested = Signal()  # 右键菜单"立即刷新"发出，供 main 触发刷新
 
     def __init__(self):
         super().__init__()
@@ -77,6 +78,29 @@ class UsageWidget(QWidget):
             self._set_color(max([c5, cw], key=lambda c: rank[c]))
         else:
             self._set_color('normal')
+
+        # 文本变长后窗口可能超出屏幕右缘，收回来
+        self._clamp_to_screen()
+
+    def _clamp_to_screen(self):
+        screen = QApplication.screenAt(self.pos()) or QApplication.primaryScreen()
+        g = screen.availableGeometry()
+        x, y = self.x(), self.y()
+        if self.x() + self.width() > g.right():
+            x = g.right() - self.width()
+        if self.y() + self.height() > g.bottom():
+            y = g.bottom() - self.height()
+        if x != self.x() or y != self.y():
+            self.move(x, y)
+
+    # 右键菜单：立即刷新 / 退出
+    def contextMenuEvent(self, e):
+        menu = QMenu(self)
+        act_refresh = menu.addAction('立即刷新')
+        act_refresh.triggered.connect(self.refresh_requested.emit)
+        act_quit = menu.addAction('退出')
+        act_quit.triggered.connect(QApplication.instance().quit)
+        menu.exec(e.globalPos())
 
     # 拖动
     def mousePressEvent(self, e):

@@ -24,3 +24,14 @@ def test_usage_refresh_preserves_stale(qapp):
     w.update_data((69411491, 60.732, 'kimi-k3'))          # 仅刷用量，无 quota 参数 → stale 保持
     assert w._stale is True
     assert '周 68%' in w._label.text()                     # 保留上次额度仍显示
+
+def test_widget_clamps_offscreen_right(qapp):
+    from PySide6.QtWidgets import QApplication
+    w = UsageWidget()
+    w.update_data((69411491, 60.732, 'kimi-k3'),
+                  {'h5': {'used': 78, 'limit': 100, 'reset': 't'},
+                   'weekly': {'used': 68, 'limit': 100, 'reset': 't'}})
+    g = QApplication.primaryScreen().availableGeometry()
+    w.move(g.right() + 50, g.bottom() - w.height())  # 故意移出屏幕右缘
+    w._clamp_to_screen()
+    assert w.x() + w.width() <= g.right() + 1

@@ -49,7 +49,7 @@ def place_default(widget):
     screen = QApplication.primaryScreen()
     geo = screen.availableGeometry()
     widget.move(geo.right() - widget.width() - 8,
-                geo.bottom() - widget.height() - 4)
+                geo.bottom() - widget.height())
 
 
 def main():
@@ -79,6 +79,9 @@ def main():
         worker.finished.connect(lambda: _workers.discard(worker))
         worker.finished.connect(worker.deleteLater)
         worker.start()
+
+    # 窄条上的右键"立即刷新"
+    widget.refresh_requested.connect(lambda: (refresh_usage(), refresh_quota()))
 
     usage_timer = QTimer()
     usage_timer.timeout.connect(refresh_usage)
