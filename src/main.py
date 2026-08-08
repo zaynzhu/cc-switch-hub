@@ -1,13 +1,14 @@
 import sys, os, json
 from PySide6.QtWidgets import QApplication, QSystemTrayIcon, QMenu
-from PySide6.QtGui import QIcon, QAction
+from PySide6.QtGui import QIcon, QAction, QPixmap, QPainter, QColor
 from PySide6.QtCore import QTimer, Qt, QThread, Signal
 
 from usage_reader import get_today_usage
-from quota_fetcher import get_kimi_config, fetch_kimi_quota
+from quota_fetcher import get_current_provider, fetch_quota
 from widget import UsageWidget
 
 DB_PATH = os.path.expanduser('~/.cc-switch/cc-switch.db')
+SETTINGS_JSON_PATH = os.path.expanduser('~/.cc-switch/settings.json')
 SETTINGS_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'settings.json')
 USAGE_INTERVAL = 30 * 1000      # 30 秒
 QUOTA_INTERVAL = 5 * 60 * 1000  # 5 分钟
@@ -24,11 +25,12 @@ class QuotaWorker(QThread):
         self.db_path = db_path
 
     def run(self):
-        cfg = get_kimi_config(self.db_path)
-        if not cfg:
+        prov = get_current_provider(DB_PATH, SETTINGS_JSON_PATH)
+        if not prov:
             self.fetched.emit(None)
             return
-        self.fetched.emit(fetch_kimi_quota(*cfg))
+        base, token, _name = prov
+        self.fetched.emit(fetch_quota(base, token))
 
 
 def load_settings():
@@ -50,6 +52,19 @@ def place_default(widget):
     geo = screen.availableGeometry()
     widget.move(geo.left() + 8,
                 geo.bottom() - widget.height())
+
+
+def _make_tray_icon():
+    """程序生成纯色托盘图标，不依赖系统图标主题（Windows 无主题时 fromTheme 返回空白）。"""
+    pix = QPixmap(16, 16)
+    pix.fill(Qt.transparent)
+    p = QPainter(pix)
+    p.setRenderHint(QPainter.Antialiasing)
+    p.setBrush(QColor('#e0a030'))
+    p.setPen(Qt.NoPen)
+    p.drawRoundedRect(0, 0, 16, 16, 4, 4)
+    p.end()
+    return QIcon(pix)
 
 
 def main():
@@ -94,7 +109,7 @@ def main():
 
     # 托盘
     tray = QSystemTrayIcon()
-    tray.setIcon(QIcon.fromTheme('dialog-information'))
+    tray.setIcon(_make_tray_icon())
     tray.setToolTip('cc-switch 用量条')
     menu = QMenu()
     act_refresh = QAction('立即刷新')
@@ -105,6 +120,11 @@ def main():
     menu.addAction(act_quit)
     tray.setContextMenu(menu)
     tray.show()
+
+    def _on_quit():
+        for w in list(_workers):
+            w.wait(2000)
+    app.aboutToQuit.connect(_on_quit)
 
     app.exec()
 
