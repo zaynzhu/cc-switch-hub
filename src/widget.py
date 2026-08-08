@@ -60,10 +60,13 @@ class UsageWidget(QWidget):
         tip = (f"今日: {usage[0]} tok / {usage[1]:.4f} USD\n"
                f"近用模型: {usage[2] or '--'}")
         if self._quota:
-            tip += (f"\n5h: {self._quota['h5']['used']}/{self._quota['h5']['limit']} "
-                    f"重置 {self._quota['h5']['reset']}\n"
-                    f"周: {self._quota['weekly']['used']}/{self._quota['weekly']['limit']} "
-                    f"重置 {self._quota['weekly']['reset']}")
+            def _tier_txt(t):
+                u = t['used'] if t['used'] is not None else '--'
+                l = t['limit'] if t['limit'] is not None else '--'
+                r = t['reset'] if t['reset'] is not None else '--'
+                return f"{u}/{l} 重置 {r}"
+            tip += (f"\n5h: {_tier_txt(self._quota['h5'])}\n"
+                    f"周: {_tier_txt(self._quota['weekly'])}")
             if self._stale:
                 tip += '\n(额度数据已过期)'
         self._label.setToolTip(tip)

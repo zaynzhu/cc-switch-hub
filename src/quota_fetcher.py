@@ -146,9 +146,10 @@ def fetch_zhipu_quota(base_url, api_key, timeout=15):
         if str(item.get('type', '')).upper() != 'TOKENS_LIMIT':
             continue
         pct = item.get('percentage')
+        used_val = int(pct) if isinstance(pct, (int, float)) and not isinstance(pct, bool) else None
         entry = {
-            'used': int(pct) if pct is not None else None,
-            'limit': 100 if pct is not None else None,
+            'used': used_val,
+            'limit': 100 if used_val is not None else None,
             'reset': _ms_to_iso(item.get('nextResetTime')),
         }
         unit = item.get('unit')

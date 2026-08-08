@@ -52,7 +52,6 @@ def test_fetch_kimi_quota_failure(monkeypatch):
     monkeypatch.setattr("urllib.request.urlopen", boom)
     assert fetch_kimi_quota("https://x", "sk") is None
 
-import os
 from quota_fetcher import (get_current_provider, detect_provider_type,
                            fetch_zhipu_quota, fetch_quota)
 
@@ -169,3 +168,13 @@ def test_fetch_quota_dispatch(monkeypatch):
     q = fetch_quota("https://open.bigmodel.cn/api/paas/v4", "k")
     assert q is not None and q['weekly']['used'] == 55
     assert fetch_quota("https://ollama.com", "k") is None  # 不识别
+
+
+def test_fetch_zhipu_quota_malformed_percentage(monkeypatch):
+    body = json.dumps({"data": {"limits": [
+        {"type": "TOKENS_LIMIT", "percentage": "abc", "nextResetTime": 1786100000000, "unit": 6}]}}).encode()
+    monkeypatch.setattr("urllib.request.urlopen",
+                        lambda req, timeout=15: _FakeResp(body))
+    q = fetch_zhipu_quota("https://open.bigmodel.cn", "k")
+    assert q is not None  # 畸形 percentage 不抛异常、不绕过 stale 契约
+    assert q['weekly']['used'] is None

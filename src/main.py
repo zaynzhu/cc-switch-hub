@@ -25,7 +25,7 @@ class QuotaWorker(QThread):
         self.db_path = db_path
 
     def run(self):
-        prov = get_current_provider(DB_PATH, SETTINGS_JSON_PATH)
+        prov = get_current_provider(self.db_path, SETTINGS_JSON_PATH)
         if not prov:
             self.fetched.emit(None)
             return
