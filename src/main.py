@@ -69,7 +69,7 @@ def main():
     widget.moved.connect(lambda: save_settings(widget.pos()))
 
     def refresh_usage():
-        widget.update_data(get_today_usage(DB_PATH), widget._quota)
+        widget.update_data(get_today_usage(DB_PATH))
 
     def refresh_quota():
         worker = QuotaWorker(DB_PATH)

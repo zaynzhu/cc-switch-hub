@@ -2,6 +2,8 @@ from PySide6.QtWidgets import QWidget, QLabel
 from PySide6.QtCore import Qt, Signal
 from display_text import build_display_text, quota_color
 
+_KEEP = object()  # 哨兵：update_data 不传 quota 时保持额度状态不变
+
 COLORS = {
     'normal': '#d4d4d4',
     'orange': '#e0a030',
@@ -36,9 +38,11 @@ class UsageWidget(QWidget):
             f"color:{color};background-color:rgba(30,30,30,220);"
             f"padding:4px 8px;border-radius:3px;}}")
 
-    def update_data(self, usage, quota):
+    def update_data(self, usage, quota=_KEEP):
         self._usage = usage
-        if quota is not None:
+        if quota is _KEEP:
+            pass  # 仅刷用量，不动额度状态
+        elif quota is not None:
             self._quota = quota
             self._stale = False
         elif self._quota is not None:

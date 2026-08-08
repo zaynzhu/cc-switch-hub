@@ -12,3 +12,15 @@ def test_widget_update_data(qapp):
     # 无额度时不崩
     w.update_data((0, 0.0, None), None)
     assert '近用 --' in w._label.text()
+
+def test_usage_refresh_preserves_stale(qapp):
+    w = UsageWidget()
+    quota = {'h5': {'used': 78, 'limit': 100, 'reset': 't1'},
+             'weekly': {'used': 68, 'limit': 100, 'reset': 't2'}}
+    w.update_data((69411491, 60.732, 'kimi-k3'), quota)
+    assert w._stale is False
+    w.update_data((69411491, 60.732, 'kimi-k3'), None)   # 额度失败 → stale
+    assert w._stale is True
+    w.update_data((69411491, 60.732, 'kimi-k3'))          # 仅刷用量，无 quota 参数 → stale 保持
+    assert w._stale is True
+    assert '周 68%' in w._label.text()                     # 保留上次额度仍显示
