@@ -10,9 +10,9 @@
 
 ## Global Constraints
 
-- Python 解释器固定用 Anaconda：`E:/program/anaconda3/python.exe`（工具 Python `python` 与 anaconda 不在同一环境，import 验证必须用 anaconda）
-- pip 装进 anaconda：`E:/program/anaconda3/python.exe -m pip install <pkg>`
-- 测试命令统一：`E:/program/anaconda3/python.exe -m pytest tests/<file> -v`
+- Python 解释器固定用 tool python：`E:/program/tool/python/python.exe`（3.12.8，独立发行版）。anaconda 的 `Library/bin/msvcp140.dll`（14.29/VS2019）与 PySide6 所需 14.44/VS2022 DLL 冲突，`PySide6.QtWidgets` 在 anaconda 无法加载；tool python 无此污染，PySide6 已验证可用
+- pip 装进 tool python：`"E:/program/tool/python/python.exe" -m pip install <pkg>`
+- 测试命令统一：`"E:/program/tool/python/python.exe" -m pytest tests/<file> -v`
 - cc-switch 数据库路径：`C:\Users\OMEN\.cc-switch\cc-switch.db`（只读连接，`mode=ro` + uri）
 - 代码风格：JS 不分号规则不适用（本计划是 Python），但保持 2 空格缩进改为 4 空格（Python 规范），camelCase 改为 snake_case（Python 规范）
 - 额度接口固定 Kimi：`name='Kimi For Coding' AND app_type='claude'`，不随当前激活厂商变化
