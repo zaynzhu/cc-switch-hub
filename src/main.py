@@ -45,10 +45,10 @@ def save_settings(pos):
 
 
 def place_default(widget):
-    """放到屏幕右下角（任务栏上方）。"""
+    """放到屏幕左下角（任务栏上方）。"""
     screen = QApplication.primaryScreen()
     geo = screen.availableGeometry()
-    widget.move(geo.right() - widget.width() - 8,
+    widget.move(geo.left() + 8,
                 geo.bottom() - widget.height())
 
 
