@@ -1,6 +1,5 @@
 import os
 os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')
-from PySide6.QtWidgets import QApplication
 from widget import UsageWidget
 
 def test_widget_update_data(qapp):

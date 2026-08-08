@@ -42,8 +42,11 @@ def load_settings():
 
 
 def save_settings(pos):
-    with open(SETTINGS_PATH, 'w', encoding='utf-8') as f:
-        json.dump({'x': pos.x(), 'y': pos.y()}, f)
+    try:
+        with open(SETTINGS_PATH, 'w', encoding='utf-8') as f:
+            json.dump({'x': pos.x(), 'y': pos.y()}, f)
+    except OSError:
+        pass
 
 
 def place_default(widget):
