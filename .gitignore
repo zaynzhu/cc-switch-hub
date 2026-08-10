@@ -2,3 +2,9 @@ __pycache__/
 *.pyc
 settings.json
 .pytest_cache/
+
+# PyInstaller 打包产物（build/win_build.ps1 脚本本身需入库）
+dist/
+build/cc-switch-hub/
+*.spec
+build_log.txt
