@@ -1,4 +1,4 @@
-import sys, importlib
+import sys
 
 def test_main_exposes_run_windows_run_mac(monkeypatch):
     import main

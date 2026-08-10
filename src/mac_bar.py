@@ -50,9 +50,9 @@ def ring_image(ratio, stale=False, size=18):
 class MacUsageBar(rumps.App):
     def __init__(self):
         super().__init__(name='cc-switch 用量条', title='0 $0.00 --', icon=None)
-        # 菜单：5 详情行 + 分隔 + 立即刷新 + 退出
+        # 菜单：5 详情行 + stale 占位行 + 分隔 + 立即刷新 + 退出
         self.menu = ['今日: --', '花费: --', '近用: --', '5h: --', '周: --',
-                     None, '立即刷新', '退出']
+                     '', None, '立即刷新', '退出']
         self._usage = (0, 0.0, None)
         self._quota = None
         self._stale = False
@@ -94,10 +94,12 @@ class MacUsageBar(rumps.App):
             self.icon = ring_image(ratio, self._stale)
         except Exception:
             self.icon = None  # 兜底：title 已含 58% 数字，水位不丢
-        # 菜单详情文本（前 5 行）
+        # 菜单详情文本（前 5 行 + 可选第 6 行过期提示）
         items = build_menu_items(u[0], u[1], u[2], q, self._stale)
-        for i, text in enumerate(items):
-            self.menu[i].title = text  # 待回家验证动态刷新
+        for i, text in enumerate(items[:5]):
+            self.menu[i].title = text
+        # 第 6 行（索引 5）：stale 时显示过期提示，否则空文本占位
+        self.menu[5].title = items[5] if len(items) > 5 else ''
 
     @rumps.timer(USAGE_INTERVAL)
     def _usage_timer(self, _sender):

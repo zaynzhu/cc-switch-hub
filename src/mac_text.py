@@ -5,7 +5,7 @@ from display_text import format_tokens, format_cost, format_quota
 
 
 def build_title(total_tokens, total_cost, h5_used, h5_limit):
-    """菜单栏 title：'{token} {cost} {h5_pct}'，如 '69.4M $0.03 58%'。"""
+    """菜单栏 title：'{token} {cost} {h5_pct}'，如 '69.4M $0.03 78%'。"""
     tok = format_tokens(total_tokens)
     cost = format_cost(total_cost)
     h5 = format_quota(h5_used, h5_limit)  # 无额度返回 '--'
