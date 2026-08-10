@@ -7,10 +7,10 @@ def test_widget_update_data(qapp):
     w.update_data((69411491, 60.732, 'kimi-k3'),
                   {'h5': {'used': 78, 'limit': 100, 'reset': 't1'},
                    'weekly': {'used': 68, 'limit': 100, 'reset': 't2'}})
-    assert '69.4M' in w._label.text()
+    assert '69.4M' in w._text_label.text()
     # 无额度时不崩
     w.update_data((0, 0.0, None), None)
-    assert '近用 --' in w._label.text()
+    assert '· --' in w._text_label.text()
 
 def test_usage_refresh_preserves_stale(qapp):
     w = UsageWidget()
@@ -22,7 +22,7 @@ def test_usage_refresh_preserves_stale(qapp):
     assert w._stale is True
     w.update_data((69411491, 60.732, 'kimi-k3'))          # 仅刷用量，无 quota 参数 → stale 保持
     assert w._stale is True
-    assert '周 68%' in w._label.text()                     # 保留上次额度仍显示
+    assert '周 68%' in w._text_label.text()                     # 保留上次额度仍显示
 
 def test_widget_clamps_offscreen_right(qapp):
     from PySide6.QtWidgets import QApplication

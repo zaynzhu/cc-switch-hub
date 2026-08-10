@@ -1,15 +1,17 @@
-from PySide6.QtWidgets import QWidget, QLabel, QApplication, QMenu
+from PySide6.QtWidgets import QWidget, QLabel, QApplication, QMenu, QHBoxLayout
 from PySide6.QtCore import Qt, Signal
 from display_text import build_display_text, quota_color
 
 _KEEP = object()  # 哨兵：update_data 不传 quota 时保持额度状态不变
 
 COLORS = {
-    'normal': '#d4d4d4',
-    'orange': '#e0a030',
-    'red': '#e05050',
-    'grey': '#888888',
+    'normal': '#5bb974',   # 圆点：额度充足-绿
+    'orange': '#e3b341',   # 接近上限-琥珀
+    'red': '#f85149',      # 超限-红
+    'grey': '#888888',     # 无数据或过期-灰
 }
+TEXT_COLOR = '#e8e8e8'
+BG_COLOR = 'transparent'
 
 class UsageWidget(QWidget):
     moved = Signal()  # 拖动结束时发出，供 main 保存位置
@@ -20,24 +22,40 @@ class UsageWidget(QWidget):
         self.setWindowFlags(
             Qt.Tool | Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint)
         self.setAttribute(Qt.WA_ShowWithoutActivating, True)
+        self.setAttribute(Qt.WA_TranslucentBackground, True)  # 透明背景
         self._usage = (0, 0.0, None)
         self._quota = None
         self._stale = False  # 额度数据是否过期（接口失败但曾有数据）
         self._drag_pos = None
+        self._user_moved = False  # 用户拖动过则不再自动居中
 
-        self._label = QLabel(self)
-        self._set_color('normal')
-        self._label.setText('今日 -- tok · $-- · 近用 --')
-        self._label.adjustSize()
-        self.adjustSize()
+        self._dot_color = COLORS['grey']
+        # 整条背景画在 widget 上、label 透明，避免双 label 间背景断裂
+        self.setObjectName('UsageWidget')
+        self.setAttribute(Qt.WA_StyledBackground, True)
+        self.setStyleSheet(f"#UsageWidget{{background-color:{BG_COLOR};}}")
+        # 圆点与文字分两个纯文本 label：富文本不支持 AlignVCenter，拆开才能垂直居中
+        self._dot_label = QLabel('●', self)
+        self._dot_label.setAttribute(Qt.WA_TransparentForMouseEvents, True)
+        self._dot_label.setStyleSheet(self._dot_style())
+        self._text_label = QLabel(self)
+        self._text_label.setAttribute(Qt.WA_TransparentForMouseEvents, True)
+        self._text_label.setStyleSheet(
+            f"QLabel{{font-family:'Microsoft YaHei UI';font-size:10pt;"
+            f"color:{TEXT_COLOR};}}")
+        for lbl in (self._dot_label, self._text_label):
+            lbl.setAlignment(Qt.AlignVCenter | Qt.AlignLeft)
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(10, 3, 10, 3)
+        layout.setSpacing(8)
+        layout.addWidget(self._dot_label)
+        layout.addWidget(self._text_label, 1)
+        self._text_label.setText('-- tok · $-- · --')
 
-    def _set_color(self, color_key):
-        """重建完整样式表，避免 replace 找不到目标色的问题。"""
-        color = COLORS[color_key]
-        self._label.setStyleSheet(
-            f"QLabel{{font-family:'Microsoft YaHei';font-size:12px;"
-            f"color:{color};background-color:rgba(30,30,30,220);"
-            f"padding:4px 8px;border-radius:3px;}}")
+    def _dot_style(self):
+        """圆点 label 样式表；颜色随额度档位变化。"""
+        return (f"QLabel{{font-family:'Microsoft YaHei UI';font-size:11pt;"
+                f"color:{self._dot_color};}}")
 
     def update_data(self, usage, quota=_KEEP):
         self._usage = usage
@@ -52,8 +70,18 @@ class UsageWidget(QWidget):
         # 从未拿到额度时 self._quota 保持 None
 
         text = build_display_text(usage[0], usage[1], usage[2], self._quota)
-        self._label.setText(text)
-        self._label.adjustSize()
+
+        # 圆点色：过期或无额度 → 灰；有额度取 5h/周较高档
+        if self._stale or not self._quota:
+            self._dot_color = COLORS['grey']
+        else:
+            c5 = quota_color(self._quota['h5']['used'], self._quota['h5']['limit'])
+            cw = quota_color(self._quota['weekly']['used'], self._quota['weekly']['limit'])
+            rank = {'normal': 0, 'orange': 1, 'red': 2}
+            self._dot_color = COLORS[max([c5, cw], key=lambda c: rank[c])]
+        self._dot_label.setStyleSheet(self._dot_style())
+
+        self._text_label.setText(text)
         self.adjustSize()
 
         # tooltip 完整数字
@@ -69,21 +97,13 @@ class UsageWidget(QWidget):
                     f"周: {_tier_txt(self._quota['weekly'])}")
             if self._stale:
                 tip += '\n(额度数据已过期)'
-        self._label.setToolTip(tip)
+        self.setToolTip(tip)
 
-        # 额度颜色：过期变灰，否则取 5h 与周额度较高档
-        if self._stale:
-            self._set_color('grey')
-        elif self._quota:
-            c5 = quota_color(self._quota['h5']['used'], self._quota['h5']['limit'])
-            cw = quota_color(self._quota['weekly']['used'], self._quota['weekly']['limit'])
-            rank = {'normal': 0, 'orange': 1, 'red': 2}
-            self._set_color(max([c5, cw], key=lambda c: rank[c]))
+        # 文本变长后位置调整：用户拖动过则防超屏，否则保持顶部居中
+        if self._user_moved:
+            self._clamp_to_screen()
         else:
-            self._set_color('normal')
-
-        # 文本变长后窗口可能超出屏幕右缘，收回来
-        self._clamp_to_screen()
+            self.snap_top_center()
 
     def _clamp_to_screen(self):
         screen = QApplication.screenAt(self.pos()) or QApplication.primaryScreen()
@@ -95,6 +115,13 @@ class UsageWidget(QWidget):
             y = g.bottom() - self.height()
         if x != self.x() or y != self.y():
             self.move(x, y)
+
+    def snap_top_center(self):
+        """贴工作区上边、水平居中。"""
+        screen = QApplication.screenAt(self.pos()) or QApplication.primaryScreen()
+        g = screen.availableGeometry()
+        x = g.left() + (g.width() - self.width()) // 2
+        self.move(x, g.top())
 
     # 右键菜单：立即刷新 / 退出
     def contextMenuEvent(self, e):
@@ -112,9 +139,16 @@ class UsageWidget(QWidget):
             e.accept()
     def mouseMoveEvent(self, e):
         if self._drag_pos is not None and e.buttons() & Qt.LeftButton:
-            self.move(e.globalPosition().toPoint() - self._drag_pos)
+            target = e.globalPosition().toPoint() - self._drag_pos
+            # 拖动时实时限制在工作区内，避免松手后延迟弹回
+            screen = QApplication.screenAt(target) or QApplication.primaryScreen()
+            g = screen.availableGeometry()
+            x = max(g.left(), min(target.x(), g.right() - self.width()))
+            y = max(g.top(), min(target.y(), g.bottom() - self.height()))
+            self.move(x, y)
             e.accept()
     def mouseReleaseEvent(self, e):
         if self._drag_pos is not None:
             self._drag_pos = None
+            self._user_moved = True
             self.moved.emit()

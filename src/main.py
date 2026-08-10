@@ -50,11 +50,8 @@ def save_settings(pos):
 
 
 def place_default(widget):
-    """放到屏幕左下角（任务栏上方）。"""
-    screen = QApplication.primaryScreen()
-    geo = screen.availableGeometry()
-    widget.move(geo.left() + 8,
-                geo.bottom() - widget.height())
+    """放到屏幕工作区顶部水平居中、贴上边。"""
+    widget.snap_top_center()
 
 
 def _make_tray_icon():
