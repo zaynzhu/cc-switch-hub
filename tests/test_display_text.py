@@ -36,12 +36,12 @@ def test_build_display_text_with_quota():
     q = {'h5': {'used': 78, 'limit': 100, 'reset': 't1'},
          'weekly': {'used': 68, 'limit': 100, 'reset': 't2'}}
     assert build_display_text(69411491, 60.732, 'kimi-k3', q) == \
-        '今日 69.4M tok · $60.73 · 近用 kimi-k3 | 5h 78% · 周 68%'
+        '69.4M tok · $60.73 · kimi-k3 · 5h 78% · 周 68%'
 
 def test_build_display_text_without_quota():
     assert build_display_text(2100000, 0.83, 'glm-5.2', None) == \
-        '今日 2.1M tok · $0.83 · 近用 glm-5.2'
+        '2.1M tok · $0.83 · glm-5.2'
 
 def test_build_display_text_no_model():
     assert build_display_text(0, 0.0, None, None) == \
-        '今日 0 tok · $0.00 · 近用 --'
+        '0 tok · $0.00 · --'

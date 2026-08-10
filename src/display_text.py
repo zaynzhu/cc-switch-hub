@@ -30,5 +30,5 @@ def build_display_text(total_tokens, total_cost, last_model, quota):
     if quota:
         h5 = format_quota(quota['h5']['used'], quota['h5']['limit'])
         wk = format_quota(quota['weekly']['used'], quota['weekly']['limit'])
-        return f'今日 {tok} tok · {cost} · 近用 {model} | 5h {h5} · 周 {wk}'
-    return f'今日 {tok} tok · {cost} · 近用 {model}'
+        return f'{tok} tok · {cost} · {model} · 5h {h5} · 周 {wk}'
+    return f'{tok} tok · {cost} · {model}'
