@@ -51,3 +51,25 @@ Windows 任务栏上的常驻窄条，零点击显示 Claude Code（经 cc-switc
 - 设计文档：`docs/superpowers/specs/`
 - 实现计划：`docs/superpowers/plans/`
 - agent 规则手册：`AGENTS.md`
+
+## macOS 使用
+
+```bash
+pip install rumps
+python src/main.py
+```
+
+菜单栏出现用量条：进度环 icon（填充=5h 额度水位）+ `69.4M $0.03 58%` 文字，点击看完整详情。
+
+### 打包成 dmg（Mac）
+
+```bash
+pip install py2app rumps
+cd build && python mac_setup.py py2app
+codesign --sign - --force --deep dist/cc-switch-hub.app
+hdiutil create -volname "cc-switch-hub" -srcfolder dist/cc-switch-hub.app -ov -format UDZO dist/cc-switch-hub.dmg
+```
+
+### 首次打开 dmg（Gatekeeper 绕过）
+
+dmg 仅 ad-hoc 签名、未公证，双击会被拦。右键点 app →「打开」→「仍要打开」；或「系统设置 → 隐私与安全性 → 仍要打开」。
