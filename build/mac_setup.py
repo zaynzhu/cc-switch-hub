@@ -4,9 +4,11 @@
     cd build && python mac_setup.py py2app
 产物 build/mac/dist/cc-switch-hub.app
 """
+import os
 from setuptools import setup
 
-APP = ['src/main.py']
+# 基于 __file__ 解析 src/main.py 绝对路径，不依赖 cwd
+APP = [os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'src', 'main.py')]
 OPTIONS = {
     'argv_emulation': False,
     'packages': ['rumps', 'objc', 'AppKit', 'Foundation',
