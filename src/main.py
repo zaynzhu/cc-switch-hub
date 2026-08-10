@@ -1,11 +1,7 @@
 import sys, os, json
-from PySide6.QtWidgets import QApplication, QSystemTrayIcon, QMenu
-from PySide6.QtGui import QIcon, QAction, QPixmap, QPainter, QColor
-from PySide6.QtCore import QTimer, Qt, QThread, Signal
 
 from usage_reader import get_today_usage
 from quota_fetcher import get_current_provider, fetch_quota
-from widget import UsageWidget
 
 DB_PATH = os.path.expanduser('~/.cc-switch/cc-switch.db')
 SETTINGS_JSON_PATH = os.path.expanduser('~/.cc-switch/settings.json')
@@ -15,22 +11,6 @@ QUOTA_INTERVAL = 5 * 60 * 1000  # 5 分钟
 
 # 持有运行中的 QuotaWorker，防止 Python 包装对象被 GC 后 Qt 销毁运行中的线程
 _workers = set()
-
-
-class QuotaWorker(QThread):
-    fetched = Signal(object)
-
-    def __init__(self, db_path):
-        super().__init__()
-        self.db_path = db_path
-
-    def run(self):
-        prov = get_current_provider(self.db_path, SETTINGS_JSON_PATH)
-        if not prov:
-            self.fetched.emit(None)
-            return
-        base, token, _name = prov
-        self.fetched.emit(fetch_quota(base, token))
 
 
 def load_settings():
@@ -54,20 +34,40 @@ def place_default(widget):
     widget.snap_top_center()
 
 
-def _make_tray_icon():
-    """程序生成纯色托盘图标，不依赖系统图标主题（Windows 无主题时 fromTheme 返回空白）。"""
-    pix = QPixmap(16, 16)
-    pix.fill(Qt.transparent)
-    p = QPainter(pix)
-    p.setRenderHint(QPainter.Antialiasing)
-    p.setBrush(QColor('#e0a030'))
-    p.setPen(Qt.NoPen)
-    p.drawRoundedRect(0, 0, 16, 16, 4, 4)
-    p.end()
-    return QIcon(pix)
+def run_windows():
+    """Windows 路径：PySide6 延迟 import，Mac 不加载。"""
+    from PySide6.QtWidgets import (QApplication, QSystemTrayIcon, QMenu)
+    from PySide6.QtGui import QIcon, QAction, QPixmap, QPainter, QColor
+    from PySide6.QtCore import QTimer, Qt, QThread, Signal
+    from widget import UsageWidget
 
+    def _make_tray_icon():
+        """程序生成纯色托盘图标，不依赖系统图标主题（Windows 无主题时 fromTheme 返回空白）。"""
+        pix = QPixmap(16, 16)
+        pix.fill(Qt.transparent)
+        p = QPainter(pix)
+        p.setRenderHint(QPainter.Antialiasing)
+        p.setBrush(QColor('#e0a030'))
+        p.setPen(Qt.NoPen)
+        p.drawRoundedRect(0, 0, 16, 16, 4, 4)
+        p.end()
+        return QIcon(pix)
 
-def main():
+    class QuotaWorker(QThread):
+        fetched = Signal(object)
+
+        def __init__(self, db_path):
+            super().__init__()
+            self.db_path = db_path
+
+        def run(self):
+            prov = get_current_provider(self.db_path, SETTINGS_JSON_PATH)
+            if not prov:
+                self.fetched.emit(None)
+                return
+            base, token, _name = prov
+            self.fetched.emit(fetch_quota(base, token))
+
     app = QApplication(sys.argv)
     app.setQuitOnLastWindowClosed(False)
 
@@ -127,6 +127,19 @@ def main():
     app.aboutToQuit.connect(_on_quit)
 
     app.exec()
+
+
+def run_mac():
+    """Mac 路径：rumps 菜单栏。"""
+    from mac_bar import run as mac_run
+    mac_run()
+
+
+def main():
+    if sys.platform == 'darwin':
+        run_mac()
+    else:
+        run_windows()
 
 
 if __name__ == '__main__':
