@@ -84,9 +84,11 @@ hdiutil create -volname "cc-switch-hub" -srcfolder dist/cc-switch-hub.app -ov -f
 
 > The dmg is only ad-hoc signed and notarization-free; double-clicking will be blocked by Gatekeeper. Right-click the app → "Open" → "Open anyway"; or "System Settings → Privacy & Security → Open anyway".
 
-### Autostart (optional, Windows)
+### Autostart (optional)
 
-Create a shortcut in the Startup folder, launching with `pythonw.exe` (no console). See Task 6 in `docs/superpowers/plans/2026-08-07-taskbar-usage-widget.md`.
+**Windows**: Create a shortcut in the Startup folder, launching with `pythonw.exe` (no console). See Task 6 in `docs/superpowers/plans/2026-08-07-taskbar-usage-widget.md`.
+
+**macOS**: Click the progress-ring icon in the menubar → "Launch at login" (below "Refresh now") to toggle. Writes `~/Library/LaunchAgents/com.zaynzhu.cc-switch-hub.plist`; auto-starts at next login. Requires the packaged .app (`python src/main.py` has no bundle).
 
 ## 💡 Usage
 
@@ -99,7 +101,7 @@ Create a shortcut in the Startup folder, launching with `pythonw.exe` (no consol
 ### macOS menubar
 
 - Progress-ring icon fill ratio = 5h quota level
-- Click the icon for a menu: today / cost / recent model / 5h / weekly details + Refresh now / Quit
+- Click the icon for a menu: today / cost / recent model / 5h / weekly details + Refresh now / Launch at login / Quit
 
 ## 🧩 Project Structure
 

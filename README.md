@@ -84,9 +84,11 @@ hdiutil create -volname "cc-switch-hub" -srcfolder dist/cc-switch-hub.app -ov -f
 
 > dmg 仅 ad-hoc 签名、未公证，双击会被 Gatekeeper 拦。右键点 app →「打开」→「仍要打开」；或「系统设置 → 隐私与安全性 → 仍要打开」。
 
-### 开机自启（可选，Windows）
+### 开机自启（可选）
 
-创建启动文件夹快捷方式，用 `pythonw.exe` 无控制台启动，见 `docs/superpowers/plans/2026-08-07-taskbar-usage-widget.md` 的 Task 6。
+**Windows**：创建启动文件夹快捷方式，用 `pythonw.exe` 无控制台启动，见 `docs/superpowers/plans/2026-08-07-taskbar-usage-widget.md` 的 Task 6。
+
+**macOS**：菜单栏点击进度环图标 → 「开机自启」（在「立即刷新」下）切换。写入 `~/Library/LaunchAgents/com.zaynzhu.cc-switch-hub.plist`，下次登录自动启动。需打包 .app 后使用（`python src/main.py` 运行时无 bundle）。
 
 ## 💡 Usage
 
@@ -99,7 +101,7 @@ hdiutil create -volname "cc-switch-hub" -srcfolder dist/cc-switch-hub.app -ov -f
 ### macOS 菜单栏
 
 - 进度环 icon 填充比例 = 5h 额度水位
-- 点击 icon 弹出菜单：今日 / 花费 / 近用 / 5h / 周 详情 + 立即刷新 / 退出
+- 点击 icon 弹出菜单：今日 / 花费 / 近用 / 5h / 周 详情 + 立即刷新 / 开机自启 / 退出
 
 ## 🧩 项目结构
 

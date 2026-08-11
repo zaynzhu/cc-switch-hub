@@ -13,7 +13,7 @@ Windows 任务栏窄条 + macOS 菜单栏常驻用量条，显示 Claude Code（
 ### macOS
 
 - 运行：`pip install rumps` 后 `python src/main.py`
-- 打包：`pip install py2app rumps` → `cd build && python mac_setup.py py2app`（详见 README）
+- 打包：`pip install py2app rumps` → `cd build && python mac_setup.py py2app`（详见 README）。app 图标 `build/ripple.icns`（`mac_setup.py` iconfile），`LSUIElement=true` 纯菜单栏不 Dock
 
 ### 通用
 
@@ -32,7 +32,7 @@ Windows 任务栏窄条 + macOS 菜单栏常驻用量条，显示 Claude Code（
 
 **macOS UI**：
 - `src/mac_text.py`：纯函数 `build_title` / `ring_ratio` / `build_menu_items`（不依赖 rumps，Windows 可测）
-- `src/mac_bar.py`：`MacUsageBar(rumps.App)` + `ring_image`（NSImage 单色进度环）+ `@rumps.timer` + `threading` 后台额度；`run()` 入口
+- `src/mac_bar.py`：`MacUsageBar(rumps.App)` + `ring_image`（NSImage 单色进度环）+ `@rumps.timer` + `threading` 后台额度 + 开机自启菜单项（LaunchAgent，写 `~/Library/LaunchAgents/` 不 load）；`run()` 入口，启动 1s timer 刷 icon
 - `src/main.py` 的 `run_mac()`：调 `mac_bar.run()`
 
 **入口**：
@@ -52,9 +52,9 @@ Windows 任务栏窄条 + macOS 菜单栏常驻用量条，显示 Claude Code（
 - 富文本 QLabel 会拦截鼠标事件导致拖不动 → `WA_TransparentForMouseEvents`；富文本不支持 `AlignVCenter` → 圆点与文字拆双纯文本 label。
 
 ### macOS
-- rumps `App.icon` 默认 template 模式（单色），彩色需直接操作 `NSStatusItem.button.image.setTemplate_(False)` → 改用单色进度环，填充比例承载水位。
+- rumps `App.icon` setter **只收文件路径、不接受 NSImage**；动态 NSImage icon 要直接写内部 `_icon_nsimage` + 调 `_nsapp.setStatusBarIcon()`（构造阶段 `_nsapp` 未就绪会 AttributeError 吞，`_icon_nsimage` 已存，run loop 启动自动用）。默认 template 单色，填充比例承载水位。
 - Cocoa UI 更新必须在主线程 → 后台 `threading.Thread` 查额度只做整体引用替换 `self._quota`（原子）+ dirty 标志，主线程 `rumps.timer` 检测后刷 UI。
-- `mac_bar.py` 菜单动态文本 `self.menu[i].title` 是否生效待真机验证；stale 行用第 6 占位 menu 项避免索引越界。
+- `mac_bar.py` 菜单动态文本：已真机验证 `self.menu[i]` 整数索引会 `KeyError`（rumps `Menu` 按 title 做 key），改用 `__init__` 持有 `MenuItem` 引用改 `.title`；stale 行用第 6 占位 menu 项避免索引越界。
 - py2app `APP` 路径用 `__file__` 基准（`os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'src', 'main.py')`），不依赖 cwd。
 - `mac_bar.py` 依赖 rumps/AppKit，**Windows 跑不了**，只 `ast.parse` 验语法；真机验证靠 Mac。
 
