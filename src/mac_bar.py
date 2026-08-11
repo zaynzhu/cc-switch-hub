@@ -181,7 +181,8 @@ class MacUsageBar(rumps.App):
             os.makedirs(os.path.dirname(LA_PLIST), exist_ok=True)
             with open(LA_PLIST, 'w') as f:
                 f.write(plist)
-            subprocess.run(['launchctl', 'load', LA_PLIST], capture_output=True)
+            # 只写 plist，不 launchctl load：系统下次登录自动加载 + RunAtLoad 启动，
+            # 避免点「开机自启」时 launchctl load + RunAtLoad=true 立即拉起新进程
             self._m_autostart.state = 1
         except OSError:
             rumps.notification('cc-switch 用量条', '开机自启', '写入启动配置失败')
