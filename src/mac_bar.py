@@ -5,9 +5,10 @@
 - 菜单：详情 + 立即刷新 / 退出
 - 30s 刷用量、5min 后台线程查额度，主线程刷 UI
 """
-import os, threading
+import os, threading, subprocess
 import rumps
 from AppKit import NSImage, NSBezierPath, NSColor
+from Foundation import NSBundle
 
 from mac_text import build_title, ring_ratio, build_menu_items
 from usage_reader import get_today_usage
@@ -17,6 +18,8 @@ DB_PATH = os.path.expanduser('~/.cc-switch/cc-switch.db')
 SETTINGS_JSON_PATH = os.path.expanduser('~/.cc-switch/settings.json')
 USAGE_INTERVAL = 30        # 秒
 QUOTA_INTERVAL = 5 * 60    # 秒
+LA_LABEL = 'com.zaynzhu.cc-switch-hub'  # 开机自启 LaunchAgent 标签
+LA_PLIST = os.path.expanduser('~/Library/LaunchAgents/com.zaynzhu.cc-switch-hub.plist')
 
 
 def ring_image(ratio, stale=False, size=18):
@@ -50,9 +53,20 @@ def ring_image(ratio, stale=False, size=18):
 class MacUsageBar(rumps.App):
     def __init__(self):
         super().__init__(name='cc-switch 用量条', title='0 $0.00 --', icon=None)
-        # 菜单：5 详情行 + stale 占位行 + 分隔 + 立即刷新 + 退出
-        self.menu = ['今日: --', '花费: --', '近用: --', '5h: --', '周: --',
-                     '', None, '立即刷新', '退出']
+        # 详情行用 MenuItem 引用持有：rumps Menu 容器按 title 做 key，
+        # 不能用整数索引 self.menu[i]（KeyError），且 title 变化后 key 也变，
+        # 故持有引用直接改 .title 最稳。
+        self._m_today = rumps.MenuItem('今日: --')
+        self._m_cost = rumps.MenuItem('花费: --')
+        self._m_model = rumps.MenuItem('近用: --')
+        self._m_h5 = rumps.MenuItem('5h: --')
+        self._m_week = rumps.MenuItem('周: --')
+        self._m_stale = rumps.MenuItem('')  # 第 6 占位行：stale 时填过期提示
+        self._m_autostart = rumps.MenuItem('开机自启', callback=self._toggle_autostart)
+        self._m_autostart.state = 1 if self._autostart_enabled() else 0
+        self.menu = [self._m_today, self._m_cost, self._m_model,
+                     self._m_h5, self._m_week, self._m_stale,
+                     None, '立即刷新', self._m_autostart, '退出']
         self._usage = (0, 0.0, None)
         self._quota = None
         self._stale = False
@@ -90,16 +104,29 @@ class MacUsageBar(rumps.App):
         h5_limit = h5['limit'] if h5 else None
         self.title = build_title(u[0], u[1], h5_used, h5_limit)
         ratio = ring_ratio(h5_used, h5_limit)
+        # rumps App.icon setter 只收文件路径、不接受 NSImage，直接写内部
+        # _icon_nsimage 并刷 status bar。构造阶段 _nsapp 未就绪会 AttributeError，
+        # _icon_nsimage 已存，run loop 启动时 setStatusBarIcon 自动取用它。
         try:
-            self.icon = ring_image(ratio, self._stale)
+            self._icon_nsimage = ring_image(ratio, self._stale)
         except Exception:
-            self.icon = None  # 兜底：title 已含 58% 数字，水位不丢
-        # 菜单详情文本（前 5 行 + 可选第 6 行过期提示）
+            self._icon_nsimage = None  # 兜底：title 已含水位百分比，水位不丢
+        try:
+            self._nsapp.setStatusBarIcon()
+        except AttributeError:
+            pass
+        # 菜单详情文本：通过 __init__ 持有的 MenuItem 引用改 title
         items = build_menu_items(u[0], u[1], u[2], q, self._stale)
-        for i, text in enumerate(items[:5]):
-            self.menu[i].title = text
-        # 第 6 行（索引 5）：stale 时显示过期提示，否则空文本占位
-        self.menu[5].title = items[5] if len(items) > 5 else ''
+        self._m_today.title = items[0]
+        self._m_cost.title = items[1]
+        self._m_model.title = items[2]
+        # 无额度时只有 3 行，5h/周 保持初始 '--'
+        if len(items) > 3:
+            self._m_h5.title = items[3]
+        if len(items) > 4:
+            self._m_week.title = items[4]
+        # 第 6 占位行：stale 时显示过期提示，否则空文本
+        self._m_stale.title = items[5] if len(items) > 5 else ''
 
     @rumps.timer(USAGE_INTERVAL)
     def _usage_timer(self, _sender):
@@ -121,7 +148,49 @@ class MacUsageBar(rumps.App):
     def _quit(self, _):
         rumps.quit_application()
 
+    def _autostart_enabled(self):
+        """开机自启是否已配置（LaunchAgent plist 存在）。"""
+        return os.path.exists(LA_PLIST)
+
+    def _toggle_autostart(self, _):
+        """切换开机自启：写/删 LaunchAgent plist + launchctl load/unload。
+        需打包 .app 后使用（python 运行时无 bundle，注册的是 Python.app）。"""
+        if self._autostart_enabled():
+            subprocess.run(['launchctl', 'unload', LA_PLIST], capture_output=True)
+            try:
+                os.remove(LA_PLIST)
+            except OSError:
+                pass
+            self._m_autostart.state = 0
+            return
+        app_path = NSBundle.mainBundle().bundlePath()
+        if not (app_path and app_path.endswith('.app') and 'cc-switch-hub' in app_path):
+            rumps.notification('cc-switch 用量条', '开机自启', '需打包成 .app 后使用')
+            return
+        exe = os.path.join(app_path, 'Contents', 'MacOS', 'cc-switch-hub')
+        plist = ('<?xml version="1.0" encoding="UTF-8"?>\n'
+                 '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" '
+                 '"http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n'
+                 '<plist version="1.0">\n<dict>\n'
+                 f'  <key>Label</key><string>{LA_LABEL}</string>\n'
+                 f'  <key>Program</key><string>{exe}</string>\n'
+                 '  <key>RunAtLoad</key><true/>\n'
+                 '  <key>KeepAlive</key><false/>\n'
+                 '</dict>\n</plist>\n')
+        try:
+            os.makedirs(os.path.dirname(LA_PLIST), exist_ok=True)
+            with open(LA_PLIST, 'w') as f:
+                f.write(plist)
+            subprocess.run(['launchctl', 'load', LA_PLIST], capture_output=True)
+            self._m_autostart.state = 1
+        except OSError:
+            rumps.notification('cc-switch 用量条', '开机自启', '写入启动配置失败')
+
 
 def run():
     """main.py 的 darwin 分支调用。"""
-    MacUsageBar().run()
+    app = MacUsageBar()
+    # 构造时 ring_image 因无 NSGraphicsContext 失败（icon 暂存 None）；
+    # run loop 启动后 1 秒重画一次，让进度环立即可见，不必干等 30s 定时器
+    rumps.Timer(lambda _sender: app._update_ui(), 1).start()
+    app.run()

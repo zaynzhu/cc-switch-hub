@@ -8,3 +8,9 @@ dist/
 build/cc-switch-hub/
 *.spec
 build_log.txt
+
+# macOS 系统文件
+.DS_Store
+
+# py2app 中间产物（build/build/ 为 bdist 临时目录，build/dist/ 已由 dist/ 覆盖）
+build/build/
