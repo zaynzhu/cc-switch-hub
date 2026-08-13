@@ -37,21 +37,20 @@ def place_default(widget):
 def run_windows():
     """Windows 路径：PySide6 延迟 import，Mac 不加载。"""
     from PySide6.QtWidgets import (QApplication, QSystemTrayIcon, QMenu)
-    from PySide6.QtGui import QIcon, QAction, QPixmap, QPainter, QColor
+    from PySide6.QtGui import QIcon, QAction
     from PySide6.QtCore import QTimer, Qt, QThread, Signal
     from widget import UsageWidget
 
+    def _resource_path(name):
+        """资源绝对路径：打包态从 sys._MEIPASS 读，脚本态从 build/ 读。"""
+        if getattr(sys, 'frozen', False):
+            return os.path.join(sys._MEIPASS, name)
+        return os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                            '..', 'build', name)
+
     def _make_tray_icon():
-        """程序生成纯色托盘图标，不依赖系统图标主题（Windows 无主题时 fromTheme 返回空白）。"""
-        pix = QPixmap(16, 16)
-        pix.fill(Qt.transparent)
-        p = QPainter(pix)
-        p.setRenderHint(QPainter.Antialiasing)
-        p.setBrush(QColor('#e0a030'))
-        p.setPen(Qt.NoPen)
-        p.drawRoundedRect(0, 0, 16, 16, 4, 4)
-        p.end()
-        return QIcon(pix)
+        """托盘图标用 ripple.ico（与 exe 文件图标一致）。"""
+        return QIcon(_resource_path('ripple.ico'))
 
     class QuotaWorker(QThread):
         fetched = Signal(object)
