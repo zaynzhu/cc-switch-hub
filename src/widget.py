@@ -1,6 +1,8 @@
 from PySide6.QtWidgets import QWidget, QLabel, QApplication, QMenu, QHBoxLayout
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import Qt, Signal, QRectF
+from PySide6.QtGui import QPainter, QPen, QColor
 from display_text import build_display_text, quota_color
+from mac_text import ring_ratio
 
 _KEEP = object()  # 哨兵：update_data 不传 quota 时保持额度状态不变
 
@@ -12,6 +14,42 @@ COLORS = {
 }
 TEXT_COLOR = '#e8e8e8'
 BG_COLOR = 'transparent'
+
+
+class RingWidget(QWidget):
+    """自绘进度环：背景整环 + 前景弧按 5h 水位填充，颜色随档位。
+    对齐 mac_bar.ring_image 的几何，QPainter 等价实现。"""
+
+    def __init__(self):
+        super().__init__()
+        self._ratio = None  # 0-1 填充比例，None=无额度画空环
+        self._color = COLORS['grey']
+        self.setFixedSize(14, 14)
+        self.setAttribute(Qt.WA_TransparentForMouseEvents, True)
+
+    def set_state(self, ratio, color):
+        self._ratio = ratio
+        self._color = color
+        self.update()
+
+    def paintEvent(self, _e):
+        p = QPainter(self)
+        p.setRenderHint(QPainter.Antialiasing)
+        r = self.width() / 2 - 2
+        c = self.width() / 2
+        rect = QRectF(c - r, c - r, 2 * r, 2 * r)
+        # 背景整环（细，半透明）
+        bg = QPen(QColor(255, 255, 255, 60))
+        bg.setWidthF(1.5)
+        p.setPen(bg)
+        p.drawArc(rect, 0, 360 * 16)
+        # 前景填充弧（粗，档位色，从 12 点顺时针）
+        if self._ratio:
+            fg = QPen(QColor(self._color))
+            fg.setWidthF(2.5)
+            p.setPen(fg)
+            p.drawArc(rect, 90 * 16, int(-360 * self._ratio * 16))
+
 
 class UsageWidget(QWidget):
     moved = Signal()  # 拖动结束时发出，供 main 保存位置
@@ -34,28 +72,20 @@ class UsageWidget(QWidget):
         self.setObjectName('UsageWidget')
         self.setAttribute(Qt.WA_StyledBackground, True)
         self.setStyleSheet(f"#UsageWidget{{background-color:{BG_COLOR};}}")
-        # 圆点与文字分两个纯文本 label：富文本不支持 AlignVCenter，拆开才能垂直居中
-        self._dot_label = QLabel('●', self)
-        self._dot_label.setAttribute(Qt.WA_TransparentForMouseEvents, True)
-        self._dot_label.setStyleSheet(self._dot_style())
+        # 进度环与文字分两个 widget：环自绘水位、文字纯文本，各自垂直居中
+        self._ring = RingWidget()
         self._text_label = QLabel(self)
         self._text_label.setAttribute(Qt.WA_TransparentForMouseEvents, True)
         self._text_label.setStyleSheet(
             f"QLabel{{font-family:'Microsoft YaHei UI';font-size:10pt;"
             f"color:{TEXT_COLOR};}}")
-        for lbl in (self._dot_label, self._text_label):
-            lbl.setAlignment(Qt.AlignVCenter | Qt.AlignLeft)
+        self._text_label.setAlignment(Qt.AlignVCenter | Qt.AlignLeft)
         layout = QHBoxLayout(self)
         layout.setContentsMargins(10, 3, 10, 3)
         layout.setSpacing(8)
-        layout.addWidget(self._dot_label)
+        layout.addWidget(self._ring)
         layout.addWidget(self._text_label, 1)
         self._text_label.setText('-- tok · $-- · --')
-
-    def _dot_style(self):
-        """圆点 label 样式表；颜色随额度档位变化。"""
-        return (f"QLabel{{font-family:'Microsoft YaHei UI';font-size:11pt;"
-                f"color:{self._dot_color};}}")
 
     def update_data(self, usage, quota=_KEEP):
         self._usage = usage
@@ -71,7 +101,7 @@ class UsageWidget(QWidget):
 
         text = build_display_text(usage[0], usage[1], usage[2], self._quota)
 
-        # 圆点色：过期或无额度 → 灰；有额度取 5h/周较高档
+        # 环色：过期或无额度 → 灰；有额度取 5h/周较高档
         if self._stale or not self._quota:
             self._dot_color = COLORS['grey']
         else:
@@ -79,7 +109,9 @@ class UsageWidget(QWidget):
             cw = quota_color(self._quota['weekly']['used'], self._quota['weekly']['limit'])
             rank = {'normal': 0, 'orange': 1, 'red': 2}
             self._dot_color = COLORS[max([c5, cw], key=lambda c: rank[c])]
-        self._dot_label.setStyleSheet(self._dot_style())
+        # 环填充比例：5h 水位（stale 用上次额度数据，灰弧表过期）
+        ratio = ring_ratio(self._quota['h5']['used'], self._quota['h5']['limit']) if self._quota else None
+        self._ring.set_state(ratio, self._dot_color)
 
         self._text_label.setText(text)
         self.adjustSize()
