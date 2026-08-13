@@ -122,19 +122,27 @@ def run_windows():
         return cand if os.path.exists(cand) else sys.executable
 
     def _enable_autostart():
-        """写启动文件夹 .lnk，返回 (是否成功, 是否回退到带控制台解释器)。"""
-        exe = _pythonw_path()
-        fallback = exe == sys.executable
-        script = os.path.abspath(__file__)
-        workdir = os.path.dirname(os.path.dirname(script))  # 仓库根
-        ps = (
-            "$ws = New-Object -ComObject WScript.Shell;"
-            f"$lnk = $ws.CreateShortcut('{_ps_quote(STARTUP_LNK)}');"
-            f"$lnk.TargetPath = '{_ps_quote(exe)}';"
-            f"$lnk.Arguments = '{_ps_quote(script)}';"
-            f"$lnk.WorkingDirectory = '{_ps_quote(workdir)}';"
-            "$lnk.Save()"
-        )
+        """写启动文件夹 .lnk，返回 (是否成功, 是否回退到带控制台解释器)。
+        打包态(frozen)快捷方式直接指 exe 自身；脚本态找 pythonw 无控制台启动。"""
+        if getattr(sys, 'frozen', False):
+            # PyInstaller onefile：sys.executable 就是 exe，无需解释器/脚本/工作目录
+            exe = sys.executable
+            args = ''
+            workdir = ''
+            fallback = False
+        else:
+            exe = _pythonw_path()
+            args = os.path.abspath(__file__)
+            workdir = os.path.dirname(os.path.dirname(args))  # 仓库根
+            fallback = exe == sys.executable
+        ps = ("$ws = New-Object -ComObject WScript.Shell;"
+              f"$lnk = $ws.CreateShortcut('{_ps_quote(STARTUP_LNK)}');"
+              f"$lnk.TargetPath = '{_ps_quote(exe)}';")
+        if args:
+            ps += f"$lnk.Arguments = '{_ps_quote(args)}';"
+        if workdir:
+            ps += f"$lnk.WorkingDirectory = '{_ps_quote(workdir)}';"
+        ps += "$lnk.Save()"
         subprocess.run(['powershell', '-NoProfile', '-Command', ps],
                        capture_output=True)
         return os.path.exists(STARTUP_LNK), fallback
