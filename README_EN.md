@@ -22,11 +22,11 @@
 
 ## ✨ Features
 
-- **Windows taskbar strip** — frameless always-on-top, status dot (green/amber/red/grey) + usage text, hugging the taskbar
+- **Windows taskbar strip** — frameless always-on-top, progress ring (fill = 5h level, color by tier green/amber/red/grey) + usage text, hugging the taskbar
 - **macOS menubar** — built with rumps, monochrome progress-ring icon (fill ratio = 5h quota level) + usage text, click for full details
 - **Today's usage** — tokens, estimated cost, recent model, refreshes every 30s
 - **Package quota level** — Kimi / Zhipu GLM 5-hour window & weekly quota %, refreshes every 5min
-- **Status indicator** — Windows dot color / Mac ring fill ratio, gauge quota level at a glance
+- **Status indicator** — Windows progress ring color + fill ratio / Mac ring fill ratio, gauge quota level at a glance
 - **Reuses cc-switch data** — reads cc-switch.db + settings.json + provider quota APIs, no reinvented wheels
 - **Quota failure tolerance** — keeps last data on API failure and marks it stale, never zeroes out
 - **Position memory** — Windows strip is draggable with position memory; Mac menubar is native
@@ -41,7 +41,7 @@
 "E:/program/tool/python/python.exe" src/main.py
 ```
 
-A frameless always-on-top strip appears at the top-center of the screen. Draggable (position memory), right-click for "Refresh now / Quit".
+A frameless always-on-top strip appears at the top-center of the screen. Draggable (position memory), right-click for "Refresh now / Launch at login / Quit".
 
 ### macOS
 
