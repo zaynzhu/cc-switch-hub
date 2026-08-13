@@ -1,4 +1,4 @@
-import sys, os, json
+import sys, os, json, subprocess
 
 from usage_reader import get_today_usage
 from quota_fetcher import get_current_provider, fetch_quota
@@ -107,6 +107,61 @@ def run_windows():
     refresh_usage()
     refresh_quota()
 
+    # 开机自启：启动文件夹快捷方式（对齐 mac_bar 的 LaunchAgent 菜单项）
+    STARTUP_LNK = os.path.expandvars(
+        r'%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\cc-switch-hub.lnk')
+
+    def _ps_quote(s):
+        """PowerShell 单引号字符串转义：路径内单引号翻倍。"""
+        return s.replace("'", "''")
+
+    def _pythonw_path():
+        """优先用 sys.executable 同目录的 pythonw.exe（无控制台），
+        找不到则回退 sys.executable（带控制台窗口）。"""
+        cand = os.path.join(os.path.dirname(sys.executable), 'pythonw.exe')
+        return cand if os.path.exists(cand) else sys.executable
+
+    def _enable_autostart():
+        """写启动文件夹 .lnk，返回 (是否成功, 是否回退到带控制台解释器)。"""
+        exe = _pythonw_path()
+        fallback = exe == sys.executable
+        script = os.path.abspath(__file__)
+        workdir = os.path.dirname(os.path.dirname(script))  # 仓库根
+        ps = (
+            "$ws = New-Object -ComObject WScript.Shell;"
+            f"$lnk = $ws.CreateShortcut('{_ps_quote(STARTUP_LNK)}');"
+            f"$lnk.TargetPath = '{_ps_quote(exe)}';"
+            f"$lnk.Arguments = '{_ps_quote(script)}';"
+            f"$lnk.WorkingDirectory = '{_ps_quote(workdir)}';"
+            "$lnk.Save()"
+        )
+        subprocess.run(['powershell', '-NoProfile', '-Command', ps],
+                       capture_output=True)
+        return os.path.exists(STARTUP_LNK), fallback
+
+    def _disable_autostart():
+        """删启动文件夹 .lnk；删除失败返回 False（调用方还原勾选）。"""
+        try:
+            os.remove(STARTUP_LNK)
+        except OSError:
+            pass
+        return not os.path.exists(STARTUP_LNK)
+
+    def _toggle_autostart():
+        """QAction checkable 点击后 isChecked 已自动切换，据此写/删 .lnk。"""
+        if act_autostart.isChecked():
+            ok, fallback = _enable_autostart()
+            if not ok:
+                act_autostart.setChecked(False)
+                tray.showMessage('cc-switch 用量条', '写入自启快捷方式失败',
+                                 QSystemTrayIcon.Warning, 3000)
+            elif fallback:
+                tray.showMessage('cc-switch 用量条', '未找到 pythonw，自启将带控制台窗口',
+                                 QSystemTrayIcon.Information, 3000)
+        else:
+            if not _disable_autostart():
+                act_autostart.setChecked(True)  # 删失败还原勾选
+
     # 托盘
     tray = QSystemTrayIcon()
     tray.setIcon(_make_tray_icon())
@@ -115,6 +170,11 @@ def run_windows():
     act_refresh = QAction('立即刷新')
     act_refresh.triggered.connect(lambda: (refresh_usage(), refresh_quota()))
     menu.addAction(act_refresh)
+    act_autostart = QAction('开机自启')
+    act_autostart.setCheckable(True)
+    act_autostart.setChecked(os.path.exists(STARTUP_LNK))
+    act_autostart.triggered.connect(_toggle_autostart)
+    menu.addAction(act_autostart)
     act_quit = QAction('退出')
     act_quit.triggered.connect(app.quit)
     menu.addAction(act_quit)
