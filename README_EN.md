@@ -96,8 +96,8 @@ hdiutil create -volname "cc-switch-hub" -srcfolder dist/cc-switch-hub.app -ov -f
 
 ### Windows strip
 
-- Drag to reposition (position memory), right-click for "Refresh now / Quit"
-- Status dot: 🟢 healthy / 🟡 near limit / 🔴 over limit / ⚪ no data or stale
+- Drag to reposition (position memory), right-click for "Refresh now / Launch at login / Quit"
+- Progress ring: fill ratio = 5h quota level, color by tier (🟢 healthy / 🟡 near limit / 🔴 over limit / ⚪ no data or stale)
 - Hover for full tooltip (today / cost / recent model / 5h / weekly / reset time)
 
 ### macOS menubar

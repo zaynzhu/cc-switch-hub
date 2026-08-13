@@ -28,7 +28,7 @@ Windows 任务栏窄条 + macOS 菜单栏常驻用量条，显示 Claude Code（
 - `src/display_text.py`：纯函数格式化（Windows 用）
 
 **Windows UI**：
-- `src/widget.py`：`UsageWidget` 无边框窗口（`update_data`、`_stale` 变灰、`moved` / `refresh_requested` 信号）
+- `src/widget.py`：`UsageWidget` 无边框窗口（`update_data`、`RingWidget` 进度环自绘水位+档位色、`_stale` 变灰、`moved` / `refresh_requested` 信号）
 - `src/main.py` 的 `run_windows()`：30s/5min QTimer、`QuotaWorker`(QThread) 后台额度、托盘、位置记忆、开机自启勾选项（写启动文件夹 `.lnk`，`frozen` 分叉：打包态指 exe / 脚本态 `pythonw.exe`）
 
 **macOS UI**：
@@ -52,6 +52,7 @@ Windows 任务栏窄条 + macOS 菜单栏常驻用量条，显示 Claude Code（
 - QThread 必须用集合（`_workers`）持有引用直到 `finished`，否则被 GC 触发 `QThread destroyed while running` 启动崩溃。
 - 富文本 QLabel 会拦截鼠标事件导致拖不动 → `WA_TransparentForMouseEvents`；富文本不支持 `AlignVCenter` → 圆点与文字拆双纯文本 label。
 - 开机自启用 `getattr(sys,'frozen',False)` 分叉：打包态（PyInstaller onefile）`sys.executable` 即 exe，快捷方式直接指它、无 Arguments；脚本态才找 `pythonw.exe` + `main.py`。写 `.lnk` 走 PowerShell `WScript.Shell` COM（`subprocess` 调 `powershell -NoProfile -Command`），无新依赖。
+- 进度环 `RingWidget` 用 QPainter 画弧（`QRectF`+`drawArc`，从 12 点 90° 顺时针），填充=`ring_ratio`（5h 水位），色=档位；对齐 `mac_bar.ring_image` 几何。无额度画空环、stale 灰弧保留上次水位。
 
 ### macOS
 - rumps `App.icon` setter **只收文件路径、不接受 NSImage**；动态 NSImage icon 要直接写内部 `_icon_nsimage` + 调 `_nsapp.setStatusBarIcon()`（构造阶段 `_nsapp` 未就绪会 AttributeError 吞，`_icon_nsimage` 已存，run loop 启动自动用）。默认 template 单色，填充比例承载水位。
