@@ -70,8 +70,10 @@ A menubar item appears: progress-ring icon (fill = 5h quota level) + `69.4M $0.0
 
 ```bash
 powershell -ExecutionPolicy Bypass -File build/win_build.ps1
-# Output: dist/cc-switch-hub.exe
+# Output: dist/cc-switch-hub.exe (~47MB)
 ```
+
+> The exe icon comes from `build/ripple.ico`; no `--collect-all PySide6` — PyInstaller's built-in hook collects only what's needed, keeping the exe around 47MB.
 
 **macOS dmg**:
 
@@ -86,7 +88,7 @@ hdiutil create -volname "cc-switch-hub" -srcfolder dist/cc-switch-hub.app -ov -f
 
 ### Autostart (optional)
 
-**Windows**: Create a shortcut in the Startup folder, launching with `pythonw.exe` (no console). See Task 6 in `docs/superpowers/plans/2026-08-07-taskbar-usage-widget.md`.
+**Windows**: Right-click the tray icon → "Launch at login" (below "Refresh now") to toggle. Writes a shortcut to the Startup folder (`%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\cc-switch-hub.lnk`); auto-starts at next boot. Packaged exe points the shortcut at the exe itself; running from source uses `pythonw.exe` to launch `src/main.py` without a console.
 
 **macOS**: Click the progress-ring icon in the menubar → "Launch at login" (below "Refresh now") to toggle. Writes `~/Library/LaunchAgents/com.zaynzhu.cc-switch-hub.plist`; auto-starts at next login. Requires the packaged .app (`python src/main.py` has no bundle).
 

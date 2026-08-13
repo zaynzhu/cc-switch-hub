@@ -70,8 +70,10 @@ python src/main.py
 
 ```bash
 powershell -ExecutionPolicy Bypass -File build/win_build.ps1
-# 产物 dist/cc-switch-hub.exe
+# 产物 dist/cc-switch-hub.exe（~47MB）
 ```
+
+> exe 图标取自 `build/ripple.ico`；不用 `--collect-all PySide6`，靠 PyInstaller 自带 hook 自动只收必需件，体积约 47MB。
 
 **macOS dmg**：
 
@@ -86,7 +88,7 @@ hdiutil create -volname "cc-switch-hub" -srcfolder dist/cc-switch-hub.app -ov -f
 
 ### 开机自启（可选）
 
-**Windows**：创建启动文件夹快捷方式，用 `pythonw.exe` 无控制台启动，见 `docs/superpowers/plans/2026-08-07-taskbar-usage-widget.md` 的 Task 6。
+**Windows**：右键托盘图标 → 「开机自启」（在「立即刷新」下）切换。写入启动文件夹快捷方式 `%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\cc-switch-hub.lnk`，下次开机自动启动。打包态（exe）快捷方式直接指 exe；脚本运行态用 `pythonw.exe` 无控制台启动 `src/main.py`。
 
 **macOS**：菜单栏点击进度环图标 → 「开机自启」（在「立即刷新」下）切换。写入 `~/Library/LaunchAgents/com.zaynzhu.cc-switch-hub.plist`，下次登录自动启动。需打包 .app 后使用（`python src/main.py` 运行时无 bundle）。
 

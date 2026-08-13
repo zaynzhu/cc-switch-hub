@@ -9,6 +9,7 @@ Windows 任务栏窄条 + macOS 菜单栏常驻用量条，显示 Claude Code（
 - **必须用 tool python**：`E:/program/tool/python/python.exe`（3.12.8）。**不要用 Anaconda**——其 `Library/bin/msvcp140.dll`（VS2019）与 PySide6 所需 VS2022 运行时冲突，`PySide6.QtWidgets` 无法加载。
 - 运行：`"E:/program/tool/python/python.exe" src/main.py`
 - 装包：`"E:/program/tool/python/python.exe" -m pip install PySide6`
+- 打包：`pyinstaller` 已装则 `powershell -ExecutionPolicy Bypass -File build/win_build.ps1`，产物 `dist/cc-switch-hub.exe`（`--onefile --noconsole`，~47MB，图标 `build/ripple.ico`；**不用** `--collect-all PySide6`，靠 PyInstaller hook 自动收集，否则体积臃肿至 ~248MB）
 
 ### macOS
 
@@ -28,7 +29,7 @@ Windows 任务栏窄条 + macOS 菜单栏常驻用量条，显示 Claude Code（
 
 **Windows UI**：
 - `src/widget.py`：`UsageWidget` 无边框窗口（`update_data`、`_stale` 变灰、`moved` / `refresh_requested` 信号）
-- `src/main.py` 的 `run_windows()`：30s/5min QTimer、`QuotaWorker`(QThread) 后台额度、托盘、位置记忆
+- `src/main.py` 的 `run_windows()`：30s/5min QTimer、`QuotaWorker`(QThread) 后台额度、托盘、位置记忆、开机自启勾选项（写启动文件夹 `.lnk`，`frozen` 分叉：打包态指 exe / 脚本态 `pythonw.exe`）
 
 **macOS UI**：
 - `src/mac_text.py`：纯函数 `build_title` / `ring_ratio` / `build_menu_items`（不依赖 rumps，Windows 可测）
@@ -50,6 +51,7 @@ Windows 任务栏窄条 + macOS 菜单栏常驻用量条，显示 Claude Code（
 ### Windows
 - QThread 必须用集合（`_workers`）持有引用直到 `finished`，否则被 GC 触发 `QThread destroyed while running` 启动崩溃。
 - 富文本 QLabel 会拦截鼠标事件导致拖不动 → `WA_TransparentForMouseEvents`；富文本不支持 `AlignVCenter` → 圆点与文字拆双纯文本 label。
+- 开机自启用 `getattr(sys,'frozen',False)` 分叉：打包态（PyInstaller onefile）`sys.executable` 即 exe，快捷方式直接指它、无 Arguments；脚本态才找 `pythonw.exe` + `main.py`。写 `.lnk` 走 PowerShell `WScript.Shell` COM（`subprocess` 调 `powershell -NoProfile -Command`），无新依赖。
 
 ### macOS
 - rumps `App.icon` setter **只收文件路径、不接受 NSImage**；动态 NSImage icon 要直接写内部 `_icon_nsimage` + 调 `_nsapp.setStatusBarIcon()`（构造阶段 `_nsapp` 未就绪会 AttributeError 吞，`_icon_nsimage` 已存，run loop 启动自动用）。默认 template 单色，填充比例承载水位。
