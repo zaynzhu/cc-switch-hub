@@ -41,7 +41,7 @@
 "E:/program/tool/python/python.exe" src/main.py
 ```
 
-A frameless always-on-top strip appears at the top-center of the screen. Draggable (position memory), right-click for "Refresh now / Launch at login / Quit".
+A frameless always-on-top strip appears at the top-center of the primary screen. Draggable (position memory, across monitors), right-click for "Refresh now / Launch at login / Quit".
 
 ### macOS
 
@@ -96,7 +96,7 @@ hdiutil create -volname "cc-switch-hub" -srcfolder dist/cc-switch-hub.app -ov -f
 
 ### Windows strip
 
-- Drag to reposition (position memory), right-click for "Refresh now / Launch at login / Quit"
+- Drag to reposition (position memory, across monitors), right-click for "Refresh now / Launch at login / Quit"
 - Progress ring: fill ratio = 5h quota level, color by tier (🟢 healthy / 🟡 near limit / 🔴 over limit / ⚪ no data or stale)
 - Hover for full tooltip (today / cost / recent model / 5h / weekly / reset time)
 
