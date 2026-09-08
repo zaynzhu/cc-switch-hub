@@ -5,7 +5,11 @@ from quota_fetcher import get_current_provider, fetch_quota
 
 DB_PATH = os.path.expanduser('~/.cc-switch/cc-switch.db')
 SETTINGS_JSON_PATH = os.path.expanduser('~/.cc-switch/settings.json')
-SETTINGS_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'settings.json')
+if getattr(sys, 'frozen', False):
+    # 打包态 __file__ 在 _MEIPASS 临时解压目录（退出即删），位置记忆改存 exe 同目录
+    SETTINGS_PATH = os.path.join(os.path.dirname(sys.executable), 'settings.json')
+else:
+    SETTINGS_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'settings.json')
 USAGE_INTERVAL = 30 * 1000      # 30 秒
 QUOTA_INTERVAL = 5 * 60 * 1000  # 5 分钟
 
@@ -21,24 +25,42 @@ def load_settings():
         return {}
 
 
-def save_settings(pos):
+def save_settings(pos, screen_name):
     try:
         with open(SETTINGS_PATH, 'w', encoding='utf-8') as f:
-            json.dump({'x': pos.x(), 'y': pos.y()}, f)
+            json.dump({'x': pos.x(), 'y': pos.y(), 'screen': screen_name}, f)
     except OSError:
         pass
 
 
-def place_default(widget):
-    """放到屏幕工作区顶部水平居中、贴上边。"""
-    widget.snap_top_center()
+def resolve_restore_pos(st, screen_at):
+    """记忆坐标仍归属记忆屏才恢复；显示器排列变化或无归属屏时返回 None 走默认放置。
+
+    旧格式记忆（无 screen 字段）：坐标落在任一屏上即恢复（兼容）。"""
+    if 'x' not in st or 'y' not in st:
+        return None
+    scr = screen_at(st['x'], st['y'])
+    if scr is None:
+        return None
+    name = st.get('screen')
+    if name and scr.name() != name:
+        return None
+    return (st['x'], st['y'])
+
+
+def place_default(widget, screen):
+    """无有效记忆时放到指定屏（主屏）工作区顶部水平居中、贴上边。
+
+    不依赖窗口当前位置判定屏幕，避免默认位置漂移后吸附到错误的屏。"""
+    g = screen.availableGeometry()
+    widget.move(g.left() + (g.width() - widget.width()) // 2, g.top())
 
 
 def run_windows():
     """Windows 路径：PySide6 延迟 import，Mac 不加载。"""
     from PySide6.QtWidgets import (QApplication, QSystemTrayIcon, QMenu)
     from PySide6.QtGui import QIcon, QAction
-    from PySide6.QtCore import QTimer, Qt, QThread, Signal
+    from PySide6.QtCore import QTimer, Qt, QThread, Signal, QPoint
     from widget import UsageWidget
 
     def _resource_path(name):
@@ -73,14 +95,19 @@ def run_windows():
     widget = UsageWidget()
     widget.show()
 
-    # 恢复位置
-    st = load_settings()
-    if 'x' in st and 'y' in st:
-        widget.move(st['x'], st['y'])
+    # 恢复位置：坐标仍归属记忆屏才恢复，否则回主屏默认（不依赖窗口当前位置判屏）
+    def _screen_at(x, y):
+        return QApplication.screenAt(QPoint(x, y))
+
+    pos = resolve_restore_pos(load_settings(), _screen_at)
+    if pos:
+        widget.move(*pos)
     else:
-        place_default(widget)
-    # 拖动结束记忆位置
-    widget.moved.connect(lambda: save_settings(widget.pos()))
+        place_default(widget, QApplication.primaryScreen())
+    # 拖动结束记忆位置（带屏幕归属）
+    widget.moved.connect(lambda: save_settings(
+        widget.pos(),
+        (QApplication.screenAt(widget.pos()) or QApplication.primaryScreen()).name()))
 
     def refresh_usage():
         widget.update_data(get_today_usage(DB_PATH))
