@@ -1,5 +1,27 @@
 import sqlite3, json, urllib.request
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
+from threading import Lock
+from time import monotonic
+from urllib.parse import urlsplit
+
+
+class RateLimiter:
+    """同一服务两秒内只放行一次，避免手动刷新并发请求。"""
+
+    def __init__(self):
+        self._lock = Lock()
+        self._last_request = float('-inf')
+
+    def acquire(self):
+        with self._lock:
+            now = monotonic()
+            if now - self._last_request < 2:
+                return False
+            self._last_request = now
+            return True
+
+
+_OLLAMA_RATE_LIMITER = RateLimiter()
 
 def get_kimi_config(db_path):
     """按 name 读 Kimi For Coding 配置，返回 (base_url, token) 或 None。"""
@@ -52,27 +74,23 @@ def fetch_kimi_quota(base_url, token, timeout=10):
 
 def get_current_provider(db_path, settings_path):
     """读当前激活厂商，返回 (base_url, api_key, name) 或 None。
-    首选 settings.json 的 currentProviderClaude（id）→ db 查；兜底 db is_current。"""
+    仅按 settings.json 的 currentProviderClaude（id）查，不回退 is_current。"""
     provider_id = None
     try:
         with open(settings_path, encoding='utf-8') as f:
             provider_id = json.load(f).get('currentProviderClaude')
-    except (OSError, json.JSONDecodeError):
+    except (OSError, json.JSONDecodeError, AttributeError):
         provider_id = None
+    if not isinstance(provider_id, str) or not provider_id:
+        return None
     try:
         db = sqlite3.connect(f'file:{db_path}?mode=ro', uri=True)
     except sqlite3.OperationalError:
         return None
     try:
-        row = None
-        if provider_id:
-            row = db.execute(
-                "SELECT settings_config, name FROM providers WHERE id=? AND app_type='claude'",
-                (provider_id,)).fetchone()
-        if not row:
-            row = db.execute(
-                "SELECT settings_config, name FROM providers WHERE is_current=1 AND app_type='claude'"
-            ).fetchone()
+        row = db.execute(
+            "SELECT settings_config, name FROM providers WHERE id=? AND app_type='claude'",
+            (provider_id,)).fetchone()
     except sqlite3.OperationalError:
         return None
     finally:
@@ -81,17 +99,19 @@ def get_current_provider(db_path, settings_path):
         return None
     try:
         env = json.loads(row[0]).get('env', {})
-    except (json.JSONDecodeError, TypeError):
+    except (json.JSONDecodeError, TypeError, AttributeError):
+        return None
+    if not isinstance(env, dict):
         return None
     base = env.get('ANTHROPIC_BASE_URL')
     token = env.get('ANTHROPIC_AUTH_TOKEN')
-    if not base or not token:
+    if not isinstance(base, str) or not isinstance(token, str) or not base or not token:
         return None
     return (base.rstrip('/'), token, row[1])
 
 
 def detect_provider_type(base_url):
-    """按 base_url 子串判断厂商类型：'kimi' | 'zhipu' | None。"""
+    """按 base_url 判断厂商类型：'kimi' | 'zhipu' | 'ollama' | None。"""
     if not base_url:
         return None
     u = base_url.lower()
@@ -99,6 +119,11 @@ def detect_provider_type(base_url):
         return 'kimi'
     if 'open.bigmodel.cn' in u or 'bigmodel.cn' in u or 'api.z.ai' in u:
         return 'zhipu'
+    try:
+        if urlsplit(u if '://' in u else '//' + u).hostname == 'ollama.com':
+            return 'ollama'
+    except ValueError:
+        pass
     return None
 
 
@@ -164,6 +189,43 @@ def fetch_zhipu_quota(base_url, api_key, timeout=15):
     return {'h5': h5, 'weekly': weekly}
 
 
+def _ollama_weekly_reset(now):
+    """本地推算下一次周一 00:00 UTC；接口未提供重置时间。"""
+    now = now.astimezone(timezone.utc)
+    midnight = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    reset = midnight + timedelta(days=7 - now.weekday())
+    # reset 在现有两端均作为文本显示，直接注明来源以免冒充 API 时间。
+    return reset.strftime('%Y-%m-%d %H:%M UTC') + '（本地推算）'
+
+
+def fetch_ollama_quota(api_key, timeout=10):
+    """查询 Ollama Cloud legacy 未文档化接口，结构不符或失败返回 None。"""
+    if not isinstance(api_key, str) or not api_key.strip():
+        return None
+    if not _OLLAMA_RATE_LIMITER.acquire():
+        return None
+    try:
+        req = urllib.request.Request('https://ollama.com/api/usage', headers={
+            'Authorization': 'Bearer ' + api_key,
+        })
+        with urllib.request.urlopen(req, timeout=timeout) as response:
+            data = json.loads(response.read().decode())
+        session = data['limits']['session']['usage']
+        weekly = data['limits']['weekly']['usage']
+        for usage in (session, weekly):
+            if (isinstance(usage, bool) or not isinstance(usage, (int, float))
+                    or not 0 <= usage <= 1):
+                return None
+        return {
+            'h5': {'used': session * 100, 'limit': 100, 'reset': None},
+            'weekly': {'used': weekly * 100, 'limit': 100,
+                       'reset': _ollama_weekly_reset(datetime.now(timezone.utc))},
+        }
+    except Exception:
+        # 包含网络、HTTP、JSON 与接口结构变化；不记录凭据或异常内容。
+        return None
+
+
 def fetch_quota(base_url, api_key, timeout=10):
     """统一入口：按 detect 结果分发到对应厂商查询；不识别返回 None。"""
     ptype = detect_provider_type(base_url)
@@ -171,4 +233,6 @@ def fetch_quota(base_url, api_key, timeout=10):
         return fetch_kimi_quota(base_url, api_key, timeout)
     if ptype == 'zhipu':
         return fetch_zhipu_quota(base_url, api_key, timeout)
+    if ptype == 'ollama':
+        return fetch_ollama_quota(api_key, timeout)
     return None

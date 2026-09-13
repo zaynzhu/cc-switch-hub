@@ -75,7 +75,7 @@ def test_detect_provider_type():
     assert detect_provider_type('https://open.bigmodel.cn/api/paas/v4') == 'zhipu'
     assert detect_provider_type('https://bigmodel.cn/x') == 'zhipu'
     assert detect_provider_type('https://api.z.ai/v1') == 'zhipu'
-    assert detect_provider_type('https://ollama.com') is None
+    assert detect_provider_type('https://ollama.com') == 'ollama'
     assert detect_provider_type('https://api.xiaomimimo.com/anthropic') is None
     assert detect_provider_type('') is None
     assert detect_provider_type(None) is None
@@ -98,15 +98,13 @@ def test_get_current_provider_via_settings(tmp_path):
     assert name == "Kimi For Coding"
 
 
-def test_get_current_provider_fallback_is_current(tmp_path):
+def test_get_current_provider_never_falls_back_to_is_current(tmp_path):
     db_p = str(tmp_path / "t.db")
     _make_providers_db_full(db_p, [
         ("id-kimi", "claude", "Kimi For Coding", _kimi_cfg(), 1),
     ])
-    sj = str(tmp_path / "settings.json")  # 不存在 → 兜底 is_current
-    base, token, name = get_current_provider(db_p, sj)
-    assert base == "https://api.kimi.com/coding"
-    assert name == "Kimi For Coding"
+    sj = str(tmp_path / "settings.json")
+    assert get_current_provider(db_p, sj) is None
 
 
 def test_get_current_provider_missing(tmp_path):
@@ -167,7 +165,7 @@ def test_fetch_quota_dispatch(monkeypatch):
                             {"type": "TOKENS_LIMIT", "percentage": 55, "nextResetTime": 1786000000000, "unit": 6}]}}).encode()))
     q = fetch_quota("https://open.bigmodel.cn/api/paas/v4", "k")
     assert q is not None and q['weekly']['used'] == 55
-    assert fetch_quota("https://ollama.com", "k") is None  # 不识别
+    assert fetch_quota("https://unknown.example", "k") is None  # 不识别
 
 
 def test_fetch_zhipu_quota_malformed_percentage(monkeypatch):

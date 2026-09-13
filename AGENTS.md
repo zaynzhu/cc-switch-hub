@@ -24,7 +24,7 @@ Windows 任务栏窄条 + macOS 菜单栏常驻用量条，显示 Claude Code（
 
 **数据层（平台无关，两边复用）**：
 - `src/usage_reader.py`：只读 db 汇总今日 token / 花费 / 近用模型 → `get_today_usage(db_path)`
-- `src/quota_fetcher.py`：`get_current_provider` 读当前厂商、`detect_provider_type` 判型、`fetch_kimi_quota` / `fetch_zhipu_quota` / 统一入口 `fetch_quota`
+- `src/quota_fetcher.py`：`get_current_provider` 读当前厂商、`detect_provider_type` 判型、`fetch_kimi_quota` / `fetch_zhipu_quota` / `fetch_ollama_quota` / 统一入口 `fetch_quota`
 - `src/display_text.py`：纯函数格式化（Windows 用）
 
 **Windows UI**：
@@ -46,7 +46,10 @@ Windows 任务栏窄条 + macOS 菜单栏常驻用量条，显示 Claude Code（
 - **`proxy_request_logs.provider_id` 是占位值 `'_session'`**，不存真实厂商标识 → 今日用量**全部汇总**，不要改回按厂商过滤。
 - 当前激活厂商读 `~/.cc-switch/settings.json` 的 `currentProviderClaude`（id）→ db 查 base_url / token。**不要用 db 的 `is_current`**（实测动态变化、不可靠）。
 - **智谱额度接口 Authorization 不加 Bearer**（Kimi 要加）。URL `{base}/api/monitor/usage/quota/limit`，解析 `data.limits[]` 里 `type==TOKENS_LIMIT`、`unit==3`→5h / `unit==6`→周。
-- 厂商不识别（ollama / 日日新 / Xiaomi MiMo 等）→ 额度显示 `--`；查询失败 → 保留上次数据变灰（stale），勿清空。
+- 厂商不识别（日日新 / Xiaomi MiMo 等）→ 额度显示 `--`；查询失败 → 保留上次数据变灰（stale），勿清空。
+
+- Ollama Cloud legacy：仅识别 `ollama.com` 主机，复用当前 Provider 的真实 `ANTHROPIC_AUTH_TOKEN`，Bearer 请求固定 `https://ollama.com/api/usage`。`limits.session/weekly.usage` 为 0～1 已用比例，映射 `used=usage*100, limit=100`；缺字段、非数值、越界或请求失败返回 None。新增请求按服务限流，两秒内重复调用返回 None，沿用 stale。
+- Ollama 接口不提供 reset：session 为 None；weekly 按下一次周一 00:00 UTC（北京时间周一 08:00）本地推算，现有 reset 文本明确带“本地推算”，不得当成 API 返回时间。
 
 ### Windows
 - QThread 必须用集合（`_workers`）持有引用直到 `finished`，否则被 GC 触发 `QThread destroyed while running` 启动崩溃。

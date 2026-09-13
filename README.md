@@ -25,7 +25,7 @@
 - **Windows 任务栏窄条** —— 无边框置顶，进度环（填充=5h 水位，颜色按档位绿/琥珀/红/灰）+ 用量文字，贴任务栏上沿
 - **macOS 菜单栏** —— rumps 实现，单色进度环 icon（填充比例 = 5h 额度水位）+ 用量文字，点击看完整详情
 - **今日用量** —— token 数、估算花费、近用模型，30 秒刷新
-- **套餐额度水位** —— Kimi / 智谱 GLM 的 5 小时窗口与周额度百分比，5 分钟刷新
+- **套餐额度水位** —— Kimi / 智谱 GLM / Ollama Cloud legacy 的 5 小时窗口与周额度百分比，5 分钟刷新
 - **状态指示** —— Windows 进度环颜色+填充比例 / Mac 进度环填充比例，一眼判断额度水位
 - **数据复用 cc-switch** —— 读 cc-switch.db + settings.json + 厂商额度接口，不重复造轮子
 - **额度失败容错** —— 接口失败保留上次数据并标记过期（stale），不清零
@@ -110,7 +110,7 @@ hdiutil create -volname "cc-switch-hub" -srcfolder dist/cc-switch-hub.app -ov -f
 | 文件 | 职责 |
 |---|---|
 | `src/usage_reader.py` | 只读 cc-switch.db，汇总今日 token / 花费 / 近用模型 |
-| `src/quota_fetcher.py` | 跟随当前厂商查套餐额度（Kimi / 智谱分发） |
+| `src/quota_fetcher.py` | 跟随当前厂商查套餐额度（Kimi / 智谱 / Ollama 分发） |
 | `src/display_text.py` | 纯函数：格式化 token / 花费 / 额度文本与颜色阈值（Windows） |
 | `src/widget.py` | Windows 无边框置顶窄条窗口 |
 | `src/mac_text.py` | Mac 纯函数：菜单栏 title / 进度环比例 / 菜单文本 |
@@ -121,7 +121,15 @@ hdiutil create -volname "cc-switch-hub" -srcfolder dist/cc-switch-hub.app -ov -f
 
 - 今日用量 / 花费 / 近用模型：`~/.cc-switch/cc-switch.db`（只读）的 `proxy_request_logs` 表
 - 当前激活厂商：`~/.cc-switch/settings.json` 的 `currentProviderClaude`
-- 套餐额度：Kimi `api.kimi.com/coding/v1/usages`、智谱 `{base}/api/monitor/usage/quota/limit`
+- 套餐额度：Kimi `api.kimi.com/coding/v1/usages`、智谱 `{base}/api/monitor/usage/quota/limit`、Ollama Cloud legacy `https://ollama.com/api/usage`
+
+### Ollama Cloud legacy
+
+额度跟随 `settings.json` 的 `currentProviderClaude`，从该 Provider 的 `settings_config.env` 读取真实 `ANTHROPIC_BASE_URL`（主机为 `ollama.com`，可带 `/v1` 等路径）与 `ANTHROPIC_AUTH_TOKEN`。无需另外配置 Key；不回退数据库的 `is_current`。
+
+`/api/usage` 是未正式文档化的接口。session / weekly 的 `usage` 是 0～1 的已使用比例，例如 `0.234 / 0.81` 显示为 `5h 23% · 周 81%`。网络、鉴权、接口结构或字段异常时保留旧额度并标记过期；两秒内重复刷新不会再次请求。
+
+接口不返回重置时间：5h 显示 `--`；周重置按下一次周一 **00:00 UTC（北京时间 08:00）** 推算，详情明确标注“本地推算”。该时间不是 API 返回值，也不代表 session 的重置时间。
 
 ## ❓ FAQ
 

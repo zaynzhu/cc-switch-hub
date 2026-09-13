@@ -25,7 +25,7 @@
 - **Windows taskbar strip** — frameless always-on-top, progress ring (fill = 5h level, color by tier green/amber/red/grey) + usage text, hugging the taskbar
 - **macOS menubar** — built with rumps, monochrome progress-ring icon (fill ratio = 5h quota level) + usage text, click for full details
 - **Today's usage** — tokens, estimated cost, recent model, refreshes every 30s
-- **Package quota level** — Kimi / Zhipu GLM 5-hour window & weekly quota %, refreshes every 5min
+- **Package quota level** — Kimi / Zhipu GLM / Ollama Cloud legacy 5-hour window & weekly quota %, refreshes every 5min
 - **Status indicator** — Windows progress ring color + fill ratio / Mac ring fill ratio, gauge quota level at a glance
 - **Reuses cc-switch data** — reads cc-switch.db + settings.json + provider quota APIs, no reinvented wheels
 - **Quota failure tolerance** — keeps last data on API failure and marks it stale, never zeroes out
@@ -110,7 +110,7 @@ hdiutil create -volname "cc-switch-hub" -srcfolder dist/cc-switch-hub.app -ov -f
 | File | Responsibility |
 |---|---|
 | `src/usage_reader.py` | Read-only cc-switch.db, aggregates today's tokens / cost / recent model |
-| `src/quota_fetcher.py` | Follows the active provider to query package quota (Kimi / Zhipu dispatch) |
+| `src/quota_fetcher.py` | Follows the active provider to query package quota (Kimi / Zhipu / Ollama dispatch) |
 | `src/display_text.py` | Pure functions: format token / cost / quota text and color thresholds (Windows) |
 | `src/widget.py` | Windows frameless always-on-top strip window |
 | `src/mac_text.py` | Mac pure functions: menubar title / ring ratio / menu text |
@@ -121,7 +121,15 @@ hdiutil create -volname "cc-switch-hub" -srcfolder dist/cc-switch-hub.app -ov -f
 
 - Today's usage / cost / recent model: `~/.cc-switch/cc-switch.db` (read-only), `proxy_request_logs` table
 - Active provider: `~/.cc-switch/settings.json`, `currentProviderClaude`
-- Package quota: Kimi `api.kimi.com/coding/v1/usages`, Zhipu `{base}/api/monitor/usage/quota/limit`
+- Package quota: Kimi `api.kimi.com/coding/v1/usages`, Zhipu `{base}/api/monitor/usage/quota/limit`, Ollama Cloud legacy `https://ollama.com/api/usage`
+
+### Ollama Cloud legacy
+
+Quota follows `currentProviderClaude` in `settings.json`, reusing that provider's real `ANTHROPIC_BASE_URL` (host `ollama.com`, optionally with a path such as `/v1`) and `ANTHROPIC_AUTH_TOKEN` from `settings_config.env`. No separate key configuration is needed; database `is_current` is not used as a fallback.
+
+The undocumented `/api/usage` endpoint reports session / weekly `usage` as fractions from 0 to 1. For example, `0.234 / 0.81` displays as `5h 23% · 周 81%`. Network, authorization, schema or field errors retain the last quota and mark it stale. Repeated refreshes within two seconds do not issue another request.
+
+The API provides no reset timestamps. Session reset remains `--`. Weekly reset is estimated locally as the next Monday **00:00 UTC (08:00 Beijing time)**, explicitly labeled `本地推算` (local estimate) in details. This is not an API timestamp or a session reset estimate.
 
 ## ❓ FAQ
 
