@@ -28,3 +28,7 @@ codesign --sign - --force --deep build/dist/cc-switch-hub.app
 ## 安装后验证
 
 退出旧应用，打开 DMG，将应用拖入 Applications 并替换。启动新版，在 cc-switch 激活包含真实 Base URL 和 Key 的 Ollama Provider，再从菜单点击“立即刷新”。检查 5h / 周比例、5h 未知重置时间和周重置“本地推算”标记；切换到 Kimi 或智谱后再次刷新，确认额度跟随。
+
+## 安装后清理
+
+用户安装新版后要求只保留正式版。已确认 `/Applications/cc-switch-hub.app` 包含 Ollama 查询代码且签名验证通过；随后弹出安装镜像，将当前及旧项目中的三个应用副本、两份 DMG 和 DMG 暂存目录移到废纸篓，并移除重复应用注册。上述产物路径现已清空，源码与 cc-switch 配置保留。
