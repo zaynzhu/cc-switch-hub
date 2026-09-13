@@ -26,7 +26,7 @@
 - **macOS menubar** — built with rumps, monochrome dual-ring icon (inner = 5h usage, outer = weekly usage) + usage text, click for full details
 - **Today's usage** — tokens, estimated cost, recent model, refreshes every 30s
 - **Package quota level** — Kimi / Zhipu GLM / Ollama Cloud legacy 5-hour window & weekly quota %, refreshes every 5min
-- **Status indicator** — Windows progress ring color + fill ratio / Mac ring fill ratio, gauge quota level at a glance
+- **Status indicator** — Windows progress ring color + fill ratio / Mac dual-ring fill ratios, gauge quota level at a glance
 - **Reuses cc-switch data** — reads cc-switch.db + settings.json + provider quota APIs, no reinvented wheels
 - **Quota failure tolerance** — keeps last data on API failure and marks it stale, never zeroes out
 - **Position memory** — Windows strip is draggable with position memory; Mac menubar is native
@@ -62,7 +62,7 @@ A menubar item appears: dual-ring icon (inner = 5h usage, outer = weekly usage) 
 | macOS | rumps | `pip install rumps` |
 | Dev | pytest | `pip install pytest` |
 
-> ⚠️ **Windows: do not use Anaconda's python** — its `Library/bin/msvcp140.dll` (VS2019) conflicts with the VS2022 runtime PySide6 needs; `PySide6.QtWidgets` won't load. You must use tool python `E:/program/tool/python.exe` (3.12.8).
+> ⚠️ **Windows: do not use Anaconda's python** — its `Library/bin/msvcp140.dll` (VS2019) conflicts with the VS2022 runtime PySide6 needs; `PySide6.QtWidgets` won't load. You must use tool python `E:/program/tool/python/python.exe` (3.12.8).
 
 ### Packaging
 
@@ -76,6 +76,8 @@ powershell -ExecutionPolicy Bypass -File build/win_build.ps1
 > The exe icon comes from `build/ripple.ico`; no `--collect-all PySide6` — PyInstaller's built-in hook collects only what's needed, keeping the exe around 47MB.
 
 **macOS dmg**:
+
+Before signing, check the library paths and bundled bytecode described in the [macOS build and verification record](docs/verification/2026-09-13-ollama-macos-package.md). After installation, remove build copies and eject the image to avoid duplicate application entries.
 
 ```bash
 pip install py2app rumps
@@ -111,10 +113,10 @@ hdiutil create -volname "cc-switch-hub" -srcfolder dist/cc-switch-hub.app -ov -f
 |---|---|
 | `src/usage_reader.py` | Read-only cc-switch.db, aggregates today's tokens / cost / recent model |
 | `src/quota_fetcher.py` | Follows the active provider to query package quota (Kimi / Zhipu / Ollama dispatch) |
-| `src/display_text.py` | Pure functions: format token / cost / quota text and color thresholds (Windows) |
+| `src/display_text.py` | Shared token / cost / quota / Beijing-time formatting; Windows color thresholds |
 | `src/widget.py` | Windows frameless always-on-top strip window |
 | `src/mac_text.py` | Mac pure functions: menubar title / ring ratio / menu text |
-| `src/mac_bar.py` | macOS rumps menubar App + monochrome progress ring |
+| `src/mac_bar.py` | macOS rumps menubar App + monochrome dual rings |
 | `src/main.py` | Entry: branches on `sys.platform` (`run_windows` / `run_mac`) |
 
 ## 📊 Data Sources
@@ -129,7 +131,7 @@ API reset timestamps in details are displayed in Beijing time (UTC+8); missing t
 
 Quota follows `currentProviderClaude` in `settings.json`, reusing that provider's real `ANTHROPIC_BASE_URL` (host `ollama.com`, optionally with a path such as `/v1`) and `ANTHROPIC_AUTH_TOKEN` from `settings_config.env`. No separate key configuration is needed; database `is_current` is not used as a fallback.
 
-The undocumented `/api/usage` endpoint reports session / weekly `usage` as fractions from 0 to 1. For example, `0.234 / 0.81` displays as `5h 23% · 周 81%`. Network, authorization, schema or field errors retain the last quota and mark it stale. Repeated refreshes within two seconds do not issue another request.
+The undocumented `/api/usage` endpoint reports session / weekly `usage` as fractions from 0 to 1. For example, `0.234 / 0.81` displays as `5h 23% · 周 81%` on Windows; the macOS title shows `23% · 81%` after tokens and cost. Network, authorization, schema or field errors retain the last quota and mark it stale. Repeated refreshes within two seconds do not issue another request.
 
 The API provides no reset timestamps. Session reset remains `--`. Weekly reset is estimated locally as the next Monday **00:00 UTC (08:00 Beijing time)**, displayed in Beijing time and explicitly labeled `本地推算` (local estimate) in details. This is not an API timestamp or a session reset estimate.
 
@@ -152,7 +154,7 @@ macOS menubar status item icons default to template images (monochrome, auto-inv
 <details>
 <summary>Why must Windows use tool python?</summary>
 
-Anaconda's `Library/bin/msvcp140.dll` (VS2019) conflicts with the VS2022 runtime PySide6 needs; `PySide6.QtWidgets` won't load. Tool python `E:/program/tool/python.exe` (3.12.8) has no such conflict.
+Anaconda's `Library/bin/msvcp140.dll` (VS2019) conflicts with the VS2022 runtime PySide6 needs; `PySide6.QtWidgets` won't load. Tool python `E:/program/tool/python/python.exe` (3.12.8) has no such conflict.
 
 </details>
 
@@ -161,8 +163,9 @@ Anaconda's `Library/bin/msvcp140.dll` (VS2019) conflicts with the VS2022 runtime
 | Doc | Description |
 |---|---|
 | `AGENTS.md` | Agent rulebook (environment, modules, pitfalls) |
-| `docs/superpowers/specs/` | Design docs |
-| `docs/superpowers/plans/` | Implementation plans |
+| `docs/verification/2026-09-13-ollama-macos-package.md` | Current macOS behavior, verification and troubleshooting |
+| `docs/superpowers/specs/` | Historical design records |
+| `docs/superpowers/plans/` | Historical plans, not current execution instructions |
 
 ## 🤝 Contributing
 

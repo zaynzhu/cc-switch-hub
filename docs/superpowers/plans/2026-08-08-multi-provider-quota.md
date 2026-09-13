@@ -1,5 +1,7 @@
 # 多厂商额度跟随 + 细节打磨 实现计划
 
+> 历史记录：保留当时的设计与实现过程，不作为当前执行指令。当前厂商支持、显示与安装方式以 [README](../../../README.md)、[项目规则](../../../AGENTS.md) 和 [macOS 验收记录](../../verification/2026-09-13-ollama-macos-package.md) 为准。
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 额度从"固定查 Kimi"重构为"跟随 cc-switch 当前激活厂商"，支持 Kimi + 智谱 GLM；并修终审遗留的三项细节问题（托盘图标兜底、退出线程竞态、测试边界+代码清理）。

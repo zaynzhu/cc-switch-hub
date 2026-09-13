@@ -46,7 +46,7 @@ Windows 任务栏窄条 + macOS 菜单栏常驻用量条，显示 Claude Code（
 - **`proxy_request_logs.provider_id` 是占位值 `'_session'`**，不存真实厂商标识 → 今日用量**全部汇总**，不要改回按厂商过滤。
 - 当前激活厂商读 `~/.cc-switch/settings.json` 的 `currentProviderClaude`（id）→ db 查 base_url / token。**不要用 db 的 `is_current`**（实测动态变化、不可靠）。
 - **智谱额度接口 Authorization 不加 Bearer**（Kimi 要加）。URL `{base}/api/monitor/usage/quota/limit`，解析 `data.limits[]` 里 `type==TOKENS_LIMIT`、`unit==3`→5h / `unit==6`→周。
-- 厂商不识别（日日新 / Xiaomi MiMo 等）→ 额度显示 `--`；查询失败 → 保留上次数据变灰（stale），勿清空。
+- 不识别厂商或查询失败返回 None；从未成功时显示未知，已有数据则沿用 stale（Windows 变灰、macOS 变淡并在菜单标记），勿清空。
 
 - Ollama Cloud legacy：仅识别 `ollama.com` 主机，复用当前 Provider 的真实 `ANTHROPIC_AUTH_TOKEN`，Bearer 请求固定 `https://ollama.com/api/usage`。`limits.session/weekly.usage` 为 0～1 已用比例，映射 `used=usage*100, limit=100`；缺字段、非数值、越界或请求失败返回 None。新增请求按服务限流，两秒内重复调用返回 None，沿用 stale。
 - Ollama 接口不提供 reset：session 为 None；weekly 按下一次周一 00:00 UTC（北京时间周一 08:00）本地推算，reset 文本按北京时间显示并明确带“本地推算”，不得当成 API 返回时间。
@@ -65,7 +65,7 @@ Windows 任务栏窄条 + macOS 菜单栏常驻用量条，显示 Claude Code（
 - `mac_bar.py` 菜单动态文本：已真机验证 `self.menu[i]` 整数索引会 `KeyError`（rumps `Menu` 按 title 做 key），改用 `__init__` 持有 `MenuItem` 引用改 `.title`；stale 行用第 6 占位 menu 项避免索引越界。
 - py2app 正式包可能优先加载 `Contents/Resources/lib/python39.zip` 内的 `.pyc`，即使 `lib/python3.9/` 同时有源码。更新安装版不能只替换 `.py`；必须同步实际编译模块、重新签名，并从包内导入验证行为。
 - py2app `APP` 路径用 `__file__` 基准（`os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'src', 'main.py')`），不依赖 cwd。
-- `mac_bar.py` 依赖 rumps/AppKit，**Windows 跑不了**，只 `ast.parse` 验语法；真机验证靠 Mac。
+- `mac_bar.py` 依赖 rumps/AppKit，Windows 不能执行；`tests/test_mac_ring.py` 缺少 AppKit/rumps 时跳过，必须在 macOS 另跑真实 Cocoa 验证，不能把跳过计作通过。
 
 ## 规范
 
@@ -75,8 +75,9 @@ Windows 任务栏窄条 + macOS 菜单栏常驻用量条，显示 Claude Code（
 
 ## 文档指针
 
-- 设计文档：`docs/superpowers/specs/`
-- 实现计划：`docs/superpowers/plans/`
+- 当前 macOS 行为、打包及验收边界：[验收记录](docs/verification/2026-09-13-ollama-macos-package.md)
+- 历史设计记录：`docs/superpowers/specs/`
+- 历史实现计划：`docs/superpowers/plans/`（保留过程，不作为当前执行指令）
 - 面向人说明：`README.md`（中文）/ `README_EN.md`（英文）
 
 ## 运行时文件

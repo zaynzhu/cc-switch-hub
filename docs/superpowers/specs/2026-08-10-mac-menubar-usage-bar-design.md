@@ -1,5 +1,7 @@
 # Mac 菜单栏用量条设计
 
+> 历史记录：保留当时的设计与实现过程，不作为当前执行指令。当前厂商支持、显示与安装方式以 [README](../../../README.md)、[项目规则](../../../AGENTS.md) 和 [macOS 验收记录](../../verification/2026-09-13-ollama-macos-package.md) 为准。
+
 ## 背景与目标
 
 cc-switch-hub 现有 Windows 任务栏窄条（PySide6 `UsageWidget`）。本设计新增 macOS 支持：在 Mac 顶部菜单栏显示用量条。**Windows 端代码不动**，Mac 新开独立模块。

@@ -1,5 +1,7 @@
 # Mac 菜单栏用量条 Implementation Plan
 
+> 历史记录：保留当时的设计与实现过程，不作为当前执行指令。当前厂商支持、显示与安装方式以 [README](../../../README.md)、[项目规则](../../../AGENTS.md) 和 [macOS 验收记录](../../verification/2026-09-13-ollama-macos-package.md) 为准。
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 为 cc-switch-hub 新增 macOS 菜单栏用量条（rumps），Windows 端代码不动。

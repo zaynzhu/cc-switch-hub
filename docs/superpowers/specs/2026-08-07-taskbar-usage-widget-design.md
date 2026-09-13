@@ -1,5 +1,7 @@
 # cc-switch-hub 任务栏用量条 设计文档
 
+> 历史记录：保留当时的设计与实现过程，不作为当前执行指令。当前厂商支持、显示与安装方式以 [README](../../../README.md)、[项目规则](../../../AGENTS.md) 和 [macOS 验收记录](../../verification/2026-09-13-ollama-macos-package.md) 为准。
+
 日期：2026-08-07
 状态：已确认，待实现
 

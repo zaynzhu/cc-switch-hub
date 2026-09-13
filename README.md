@@ -26,7 +26,7 @@
 - **macOS 菜单栏** —— rumps 实现，单色双环 icon（内圈 = 5h、外圈 = 周额度已用比例）+ 用量文字，点击看完整详情
 - **今日用量** —— token 数、估算花费、近用模型，30 秒刷新
 - **套餐额度水位** —— Kimi / 智谱 GLM / Ollama Cloud legacy 的 5 小时窗口与周额度百分比，5 分钟刷新
-- **状态指示** —— Windows 进度环颜色+填充比例 / Mac 进度环填充比例，一眼判断额度水位
+- **状态指示** —— Windows 进度环颜色+填充比例 / Mac 双环填充比例，一眼判断额度水位
 - **数据复用 cc-switch** —— 读 cc-switch.db + settings.json + 厂商额度接口，不重复造轮子
 - **额度失败容错** —— 接口失败保留上次数据并标记过期（stale），不清零
 - **位置记忆** —— Windows 窄条可拖动、位置记忆；Mac 菜单栏原生常驻
@@ -62,7 +62,7 @@ python src/main.py
 | macOS | rumps | `pip install rumps` |
 | 开发 | pytest | `pip install pytest` |
 
-> ⚠️ **Windows 不要用 Anaconda 的 python**：其 `Library/bin/msvcp140.dll`（VS2019）与 PySide6 所需 VS2022 运行时冲突，`PySide6.QtWidgets` 无法加载。必须用 tool python `E:/program/tool/python.exe`（3.12.8）。
+> ⚠️ **Windows 不要用 Anaconda 的 python**：其 `Library/bin/msvcp140.dll`（VS2019）与 PySide6 所需 VS2022 运行时冲突，`PySide6.QtWidgets` 无法加载。必须用 tool python `E:/program/tool/python/python.exe`（3.12.8）。
 
 ### 打包
 
@@ -76,6 +76,8 @@ powershell -ExecutionPolicy Bypass -File build/win_build.ps1
 > exe 图标取自 `build/ripple.ico`；不用 `--collect-all PySide6`，靠 PyInstaller 自带 hook 自动只收必需件，体积约 47MB。
 
 **macOS dmg**：
+
+签名前检查 [macOS 构建与验收记录](docs/verification/2026-09-13-ollama-macos-package.md) 中的动态库路径和包内编译模块问题。安装完成后应清理构建副本并弹出镜像，避免应用列表出现重复入口。
 
 ```bash
 pip install py2app rumps
@@ -111,10 +113,10 @@ hdiutil create -volname "cc-switch-hub" -srcfolder dist/cc-switch-hub.app -ov -f
 |---|---|
 | `src/usage_reader.py` | 只读 cc-switch.db，汇总今日 token / 花费 / 近用模型 |
 | `src/quota_fetcher.py` | 跟随当前厂商查套餐额度（Kimi / 智谱 / Ollama 分发） |
-| `src/display_text.py` | 纯函数：格式化 token / 花费 / 额度文本与颜色阈值（Windows） |
+| `src/display_text.py` | 共用格式化：token / 花费 / 额度 / 北京时间；Windows 颜色阈值 |
 | `src/widget.py` | Windows 无边框置顶窄条窗口 |
 | `src/mac_text.py` | Mac 纯函数：菜单栏 title / 进度环比例 / 菜单文本 |
-| `src/mac_bar.py` | macOS rumps 菜单栏 App + 单色进度环 |
+| `src/mac_bar.py` | macOS rumps 菜单栏 App + 单色双环 |
 | `src/main.py` | 入口：按 `sys.platform` 分支（`run_windows` / `run_mac`） |
 
 ## 📊 数据来源
@@ -129,7 +131,7 @@ hdiutil create -volname "cc-switch-hub" -srcfolder dist/cc-switch-hub.app -ov -f
 
 额度跟随 `settings.json` 的 `currentProviderClaude`，从该 Provider 的 `settings_config.env` 读取真实 `ANTHROPIC_BASE_URL`（主机为 `ollama.com`，可带 `/v1` 等路径）与 `ANTHROPIC_AUTH_TOKEN`。无需另外配置 Key；不回退数据库的 `is_current`。
 
-`/api/usage` 是未正式文档化的接口。session / weekly 的 `usage` 是 0～1 的已使用比例，例如 `0.234 / 0.81` 显示为 `5h 23% · 周 81%`。网络、鉴权、接口结构或字段异常时保留旧额度并标记过期；两秒内重复刷新不会再次请求。
+`/api/usage` 是未正式文档化的接口。session / weekly 的 `usage` 是 0～1 的已使用比例，例如 `0.234 / 0.81` 在 Windows 显示为 `5h 23% · 周 81%`；macOS 常驻文字中的两个百分比为 `23% · 81%`。网络、鉴权、接口结构或字段异常时保留旧额度并标记过期；两秒内重复刷新不会再次请求。
 
 接口不返回重置时间：5h 显示 `--`；周重置按下一次周一 **00:00 UTC（北京时间 08:00）** 推算，详情按北京时间显示，并明确标注“本地推算”。该时间不是 API 返回值，也不代表 session 的重置时间。
 
@@ -152,7 +154,7 @@ macOS 菜单栏 status item 的 icon 默认是 template image（单色，随深�
 <details>
 <summary>Windows 为什么必须用 tool python？</summary>
 
-Anaconda 的 `Library/bin/msvcp140.dll`（VS2019）与 PySide6 所需 VS2022 运行时冲突，`PySide6.QtWidgets` 无法加载。tool python `E:/program/tool/python.exe`（3.12.8）无此冲突。
+Anaconda 的 `Library/bin/msvcp140.dll`（VS2019）与 PySide6 所需 VS2022 运行时冲突，`PySide6.QtWidgets` 无法加载。tool python `E:/program/tool/python/python.exe`（3.12.8）无此冲突。
 
 </details>
 
@@ -161,8 +163,9 @@ Anaconda 的 `Library/bin/msvcp140.dll`（VS2019）与 PySide6 所需 VS2022 运
 | 文档 | 说明 |
 |---|---|
 | `AGENTS.md` | agent 规则手册（环境、模块、坑点） |
-| `docs/superpowers/specs/` | 设计文档 |
-| `docs/superpowers/plans/` | 实现计划 |
+| `docs/verification/2026-09-13-ollama-macos-package.md` | 当前 macOS 行为、安装验收与排障 |
+| `docs/superpowers/specs/` | 历史设计记录 |
+| `docs/superpowers/plans/` | 历史实现计划，不作为当前执行指令 |
 
 ## 🤝 Contributing
 
