@@ -58,3 +58,13 @@ def test_ollama_display_and_stale(qapp, monkeypatch):
     assert w._dot_color == COLORS['grey']
     assert '额度数据已过期' in w.toolTip()
     w.close()
+
+
+def test_tooltip_reset_beijing(qapp):
+    quota = {'h5': {'used': 10, 'limit': 100, 'reset': '2026-09-13T23:30:00Z'},
+             'weekly': {'used': 20, 'limit': 100, 'reset': '2026-09-14T00:00:00+00:00'}}
+    w = UsageWidget()
+    w.update_data((0, 0, None), quota)
+    assert '2026-09-14 07:30 北京时间' in w.toolTip()
+    assert '2026-09-14 08:00 北京时间' in w.toolTip()
+    w.close()

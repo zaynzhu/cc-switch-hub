@@ -36,3 +36,10 @@ def test_build_menu_items_stale():
          'weekly': {'used': 68, 'limit': 100, 'reset': '周一'}}
     items = build_menu_items(69411491, 0.03, 'kimi-k3', q, True)
     assert items[-1] == '(额度数据已过期)'
+
+def test_menu_reset_beijing():
+    quota = {'h5': {'used': 10, 'limit': 100, 'reset': '2026-09-13T23:30:00Z'},
+             'weekly': {'used': 20, 'limit': 100, 'reset': '2026-09-14T00:00:00+00:00'}}
+    items = build_menu_items(0, 0, None, quota, False)
+    assert items[3] == '5h: 10% 重置 2026-09-14 07:30 北京时间'
+    assert items[4] == '周: 20% 重置 2026-09-14 08:00 北京时间'

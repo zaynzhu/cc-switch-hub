@@ -195,7 +195,8 @@ def _ollama_weekly_reset(now):
     midnight = now.replace(hour=0, minute=0, second=0, microsecond=0)
     reset = midnight + timedelta(days=7 - now.weekday())
     # reset 在现有两端均作为文本显示，直接注明来源以免冒充 API 时间。
-    return reset.strftime('%Y-%m-%d %H:%M UTC') + '（本地推算）'
+    beijing = reset.astimezone(timezone(timedelta(hours=8)))
+    return beijing.strftime('%Y-%m-%d %H:%M') + ' 北京时间（本地推算）'
 
 
 def fetch_ollama_quota(api_key, timeout=10):

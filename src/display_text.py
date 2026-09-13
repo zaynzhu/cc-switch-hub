@@ -1,3 +1,20 @@
+from datetime import datetime, timedelta, timezone
+
+
+def format_reset(value):
+    """带时区的 API 时间转为北京时间；未知或已有说明的文本保持原意。"""
+    if not value:
+        return '--'
+    try:
+        parsed = datetime.fromisoformat(value.replace('Z', '+00:00'))
+        if parsed.tzinfo is None:
+            return value
+        beijing = parsed.astimezone(timezone(timedelta(hours=8)))
+        return beijing.strftime('%Y-%m-%d %H:%M') + ' 北京时间'
+    except (ValueError, TypeError, AttributeError):
+        return value
+
+
 def format_tokens(n):
     if n >= 1_000_000:
         return f'{n / 1_000_000:.1f}M'

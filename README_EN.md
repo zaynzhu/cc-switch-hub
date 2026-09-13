@@ -123,13 +123,15 @@ hdiutil create -volname "cc-switch-hub" -srcfolder dist/cc-switch-hub.app -ov -f
 - Active provider: `~/.cc-switch/settings.json`, `currentProviderClaude`
 - Package quota: Kimi `api.kimi.com/coding/v1/usages`, Zhipu `{base}/api/monitor/usage/quota/limit`, Ollama Cloud legacy `https://ollama.com/api/usage`
 
+API reset timestamps in details are displayed in Beijing time (UTC+8); missing timestamps remain `--`.
+
 ### Ollama Cloud legacy
 
 Quota follows `currentProviderClaude` in `settings.json`, reusing that provider's real `ANTHROPIC_BASE_URL` (host `ollama.com`, optionally with a path such as `/v1`) and `ANTHROPIC_AUTH_TOKEN` from `settings_config.env`. No separate key configuration is needed; database `is_current` is not used as a fallback.
 
 The undocumented `/api/usage` endpoint reports session / weekly `usage` as fractions from 0 to 1. For example, `0.234 / 0.81` displays as `5h 23% · 周 81%`. Network, authorization, schema or field errors retain the last quota and mark it stale. Repeated refreshes within two seconds do not issue another request.
 
-The API provides no reset timestamps. Session reset remains `--`. Weekly reset is estimated locally as the next Monday **00:00 UTC (08:00 Beijing time)**, explicitly labeled `本地推算` (local estimate) in details. This is not an API timestamp or a session reset estimate.
+The API provides no reset timestamps. Session reset remains `--`. Weekly reset is estimated locally as the next Monday **00:00 UTC (08:00 Beijing time)**, displayed in Beijing time and explicitly labeled `本地推算` (local estimate) in details. This is not an API timestamp or a session reset estimate.
 
 ## ❓ FAQ
 

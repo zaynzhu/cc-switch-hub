@@ -123,13 +123,15 @@ hdiutil create -volname "cc-switch-hub" -srcfolder dist/cc-switch-hub.app -ov -f
 - 当前激活厂商：`~/.cc-switch/settings.json` 的 `currentProviderClaude`
 - 套餐额度：Kimi `api.kimi.com/coding/v1/usages`、智谱 `{base}/api/monitor/usage/quota/limit`、Ollama Cloud legacy `https://ollama.com/api/usage`
 
+重置详情中的 API 时间统一转换为北京时间（UTC+8）；缺失时间仍显示 `--`。
+
 ### Ollama Cloud legacy
 
 额度跟随 `settings.json` 的 `currentProviderClaude`，从该 Provider 的 `settings_config.env` 读取真实 `ANTHROPIC_BASE_URL`（主机为 `ollama.com`，可带 `/v1` 等路径）与 `ANTHROPIC_AUTH_TOKEN`。无需另外配置 Key；不回退数据库的 `is_current`。
 
 `/api/usage` 是未正式文档化的接口。session / weekly 的 `usage` 是 0～1 的已使用比例，例如 `0.234 / 0.81` 显示为 `5h 23% · 周 81%`。网络、鉴权、接口结构或字段异常时保留旧额度并标记过期；两秒内重复刷新不会再次请求。
 
-接口不返回重置时间：5h 显示 `--`；周重置按下一次周一 **00:00 UTC（北京时间 08:00）** 推算，详情明确标注“本地推算”。该时间不是 API 返回值，也不代表 session 的重置时间。
+接口不返回重置时间：5h 显示 `--`；周重置按下一次周一 **00:00 UTC（北京时间 08:00）** 推算，详情按北京时间显示，并明确标注“本地推算”。该时间不是 API 返回值，也不代表 session 的重置时间。
 
 ## ❓ FAQ
 

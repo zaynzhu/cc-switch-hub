@@ -32,3 +32,7 @@ codesign --sign - --force --deep build/dist/cc-switch-hub.app
 ## 安装后清理
 
 用户安装新版后要求只保留正式版。已确认 `/Applications/cc-switch-hub.app` 包含 Ollama 查询代码且签名验证通过；随后弹出安装镜像，将当前及旧项目中的三个应用副本、两份 DMG 和 DMG 暂存目录移到废纸篓，并移除重复应用注册。上述产物路径现已清空，源码与 cc-switch 配置保留。
+
+## 北京时间显示更新
+
+按用户要求，重置详情统一使用北京时间；Ollama 周重置显示周一 08:00 并保留“本地推算”，Kimi/智谱带时区的 API 时间通过共用格式化函数转换。完整测试 129 项通过。直接更新已安装正式版的三个 Python 模块（quota_fetcher、display_text、mac_text），重新签名并通过隔离空 HOME 启动验证，再启动正式版。未新增 .app 副本或 DMG；此前 DMG 哈希仅对应初次打包快照。

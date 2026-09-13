@@ -57,7 +57,7 @@ def test_request_and_display(monkeypatch):
     assert quota['h5'] == {'used': 0.234 * 100, 'limit': 100, 'reset': None}
     assert quota['weekly']['used'] == 81
     assert quota['weekly']['limit'] == 100
-    assert 'UTC（本地推算）' in quota['weekly']['reset']
+    assert '北京时间（本地推算）' in quota['weekly']['reset']
     assert build_display_text(0, 0, None, quota).endswith('5h 23% · 周 81%')
     assert build_title(0, 0, 23.4, 100).endswith('23%')
     assert ring_ratio(quota['h5']['used'], 100) == pytest.approx(0.234)
@@ -127,7 +127,7 @@ def test_request_failure(monkeypatch, capsys, error):
 ])
 def test_weekly_reset_utc_boundary(now, expected):
     assert fetcher._ollama_weekly_reset(datetime.fromisoformat(now)) == (
-        expected + ' 00:00 UTC（本地推算）')
+        expected + ' 08:00 北京时间（本地推算）')
 
 
 def test_rate_limit(monkeypatch, response):

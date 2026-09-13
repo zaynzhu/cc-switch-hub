@@ -45,3 +45,13 @@ def test_build_display_text_without_quota():
 def test_build_display_text_no_model():
     assert build_display_text(0, 0.0, None, None) == \
         '0 tok · $0.00 · --'
+
+def test_format_reset_beijing():
+    from display_text import format_reset
+    assert format_reset('2026-09-14T00:00:00Z') == '2026-09-14 08:00 北京时间'
+    assert format_reset('2026-09-13T23:30:00+00:00') == '2026-09-14 07:30 北京时间'
+    assert format_reset('2026-09-14T08:00:00+08:00') == '2026-09-14 08:00 北京时间'
+    assert format_reset('2026-09-13T17:00:00-07:00') == '2026-09-14 08:00 北京时间'
+    assert format_reset(None) == '--'
+    assert format_reset('2026-09-14T00:00:00') == '2026-09-14T00:00:00'
+    assert format_reset('2026-09-14 08:00 北京时间（本地推算）') == '2026-09-14 08:00 北京时间（本地推算）'

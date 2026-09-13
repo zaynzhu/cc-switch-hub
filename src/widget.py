@@ -1,7 +1,7 @@
 from PySide6.QtWidgets import QWidget, QLabel, QApplication, QMenu, QHBoxLayout
 from PySide6.QtCore import Qt, Signal, QRectF
 from PySide6.QtGui import QPainter, QPen, QColor
-from display_text import build_display_text, quota_color
+from display_text import build_display_text, quota_color, format_reset
 from mac_text import ring_ratio
 
 _KEEP = object()  # 哨兵：update_data 不传 quota 时保持额度状态不变
@@ -123,7 +123,7 @@ class UsageWidget(QWidget):
             def _tier_txt(t):
                 u = t['used'] if t['used'] is not None else '--'
                 l = t['limit'] if t['limit'] is not None else '--'
-                r = t['reset'] if t['reset'] is not None else '--'
+                r = format_reset(t['reset'])
                 return f"{u}/{l} 重置 {r}"
             tip += (f"\n5h: {_tier_txt(self._quota['h5'])}\n"
                     f"周: {_tier_txt(self._quota['weekly'])}")
