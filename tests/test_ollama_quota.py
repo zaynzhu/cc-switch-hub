@@ -59,7 +59,7 @@ def test_request_and_display(monkeypatch):
     assert quota['weekly']['limit'] == 100
     assert '北京时间（本地推算）' in quota['weekly']['reset']
     assert build_display_text(0, 0, None, quota).endswith('5h 23% · 周 81%')
-    assert build_title(0, 0, 23.4, 100).endswith('23%')
+    assert build_title(0, 0, 23.4, 100, 81, 100).endswith('5h 23% · 周 81%')
     assert ring_ratio(quota['h5']['used'], 100) == pytest.approx(0.234)
     items = build_menu_items(0, 0, None, quota, True)
     assert items[3] == '5h: 23% 重置 --'

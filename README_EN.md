@@ -23,7 +23,7 @@
 ## ✨ Features
 
 - **Windows taskbar strip** — frameless always-on-top, progress ring (fill = 5h level, color by tier green/amber/red/grey) + usage text, hugging the taskbar
-- **macOS menubar** — built with rumps, monochrome progress-ring icon (fill ratio = 5h quota level) + usage text, click for full details
+- **macOS menubar** — built with rumps, monochrome dual-ring icon (inner = 5h usage, outer = weekly usage) + usage text, click for full details
 - **Today's usage** — tokens, estimated cost, recent model, refreshes every 30s
 - **Package quota level** — Kimi / Zhipu GLM / Ollama Cloud legacy 5-hour window & weekly quota %, refreshes every 5min
 - **Status indicator** — Windows progress ring color + fill ratio / Mac ring fill ratio, gauge quota level at a glance
@@ -50,7 +50,7 @@ pip install rumps
 python src/main.py
 ```
 
-A menubar item appears: progress-ring icon (fill = 5h quota level) + `69.4M $0.03 58%` text, click for full details.
+A menubar item appears: dual-ring icon (inner = 5h usage, outer = weekly usage) + `69.4M $0.03 · 5h 58% · 周 68%` text, click for full details.
 
 ## 📦 Installation
 
@@ -102,7 +102,7 @@ hdiutil create -volname "cc-switch-hub" -srcfolder dist/cc-switch-hub.app -ov -f
 
 ### macOS menubar
 
-- Progress-ring icon fill ratio = 5h quota level
+- Dual-ring icon: inner ring shows 5h usage, outer ring shows weekly usage. Zero uses a faint track; 100% uses a full bold ring. Stale data dims without changing the ratios.
 - Click the icon for a menu: today / cost / recent model / 5h / weekly details + Refresh now / Launch at login / Quit
 
 ## 🧩 Project Structure

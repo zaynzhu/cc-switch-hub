@@ -32,8 +32,8 @@ Windows 任务栏窄条 + macOS 菜单栏常驻用量条，显示 Claude Code（
 - `src/main.py` 的 `run_windows()`：30s/5min QTimer、`QuotaWorker`(QThread) 后台额度、托盘、位置记忆、开机自启勾选项（写启动文件夹 `.lnk`，`frozen` 分叉：打包态指 exe / 脚本态 `pythonw.exe`）
 
 **macOS UI**：
-- `src/mac_text.py`：纯函数 `build_title` / `ring_ratio` / `build_menu_items`（不依赖 rumps，Windows 可测）
-- `src/mac_bar.py`：`MacUsageBar(rumps.App)` + `ring_image`（NSImage 单色进度环）+ `@rumps.timer` + `threading` 后台额度 + 开机自启菜单项（LaunchAgent，写 `~/Library/LaunchAgents/` 不 load）；`run()` 入口，启动 1s timer 刷 icon
+- `src/mac_text.py`：纯函数 `build_title`（常驻文字同时显示 5h / 周百分比） / `ring_ratio` / `build_menu_items`（不依赖 rumps，Windows 可测）
+- `src/mac_bar.py`：`MacUsageBar(rumps.App)` + `ring_image`（NSImage 单色双环，内圈 5h、外圈周额度）+ `@rumps.timer` + `threading` 后台额度 + 开机自启菜单项（LaunchAgent，写 `~/Library/LaunchAgents/` 不 load）；`run()` 入口，启动 1s timer 刷 icon
 - `src/main.py` 的 `run_mac()`：调 `mac_bar.run()`
 
 **入口**：
@@ -55,14 +55,15 @@ Windows 任务栏窄条 + macOS 菜单栏常驻用量条，显示 Claude Code（
 - QThread 必须用集合（`_workers`）持有引用直到 `finished`，否则被 GC 触发 `QThread destroyed while running` 启动崩溃。
 - 富文本 QLabel 会拦截鼠标事件导致拖不动 → `WA_TransparentForMouseEvents`；富文本不支持 `AlignVCenter` → 圆点与文字拆双纯文本 label。
 - 开机自启用 `getattr(sys,'frozen',False)` 分叉：打包态（PyInstaller onefile）`sys.executable` 即 exe，快捷方式直接指它、无 Arguments；脚本态才找 `pythonw.exe` + `main.py`。写 `.lnk` 走 PowerShell `WScript.Shell` COM（`subprocess` 调 `powershell -NoProfile -Command`），无新依赖。
-- 进度环 `RingWidget` 用 QPainter 画弧（`QRectF`+`drawArc`，从 12 点 90° 顺时针），填充=`ring_ratio`（5h 水位），色=档位；对齐 `mac_bar.ring_image` 几何。无额度画空环、stale 灰弧保留上次水位。
+- 进度环 `RingWidget` 用 QPainter 画弧（`QRectF`+`drawArc`，从 12 点 90° 顺时针），填充=`ring_ratio`（5h 水位），色=档位；Windows 保留单圈，macOS 使用内外双环。无额度画空环、stale 灰弧保留上次水位。
 - 托盘图标用 `ripple.ico`，`_resource_path` 定位：打包态从 `sys._MEIPASS` 读、脚本态从 `build/` 读；`win_build.ps1` 必须 `--add-data` 把 ico 打进 exe，否则打包态 `QIcon` 加载不到。
 - 位置记忆 `SETTINGS_PATH` 必须 frozen 分叉：打包态（onefile）`__file__` 指向 `_MEIPASS` 临时解压目录、退出即删，记忆写那里等于每次启动清零（用户"拖了白拖"）；打包态改存 exe 同目录（`settings.json` 已被 .gitignore 全局忽略）。记忆带 `screen` 屏幕归属，恢复时校验坐标仍归属记忆屏（`resolve_restore_pos`），布局变化回主屏默认；无有效记忆时 `place_default` 固定用 `QApplication.primaryScreen()` 顶部居中，**不要用 `screenAt(窗口当前位置)` 判屏**（启动时序漂移会吸附到错误的屏）。
 
 ### macOS
-- rumps `App.icon` setter **只收文件路径、不接受 NSImage**；动态 NSImage icon 要直接写内部 `_icon_nsimage` + 调 `_nsapp.setStatusBarIcon()`（构造阶段 `_nsapp` 未就绪会 AttributeError 吞，`_icon_nsimage` 已存，run loop 启动自动用）。默认 template 单色，填充比例承载水位。
+- rumps `App.icon` setter **只收文件路径、不接受 NSImage**；动态 NSImage icon 要直接写内部 `_icon_nsimage` + 调 `_nsapp.setStatusBarIcon()`（构造阶段 `_nsapp` 未就绪会 AttributeError 吞，`_icon_nsimage` 已存，run loop 启动自动用）。默认 template 单色；内圈 5h、外圈周额度。部分圆弧必须显式 clockwise；100% 用椭圆路径，避免整周角度被 Cocoa 归一化为零。stale 降透明度，不修改实际比例。
 - Cocoa UI 更新必须在主线程 → 后台 `threading.Thread` 查额度只做整体引用替换 `self._quota`（原子）+ dirty 标志，主线程 `rumps.timer` 检测后刷 UI。
 - `mac_bar.py` 菜单动态文本：已真机验证 `self.menu[i]` 整数索引会 `KeyError`（rumps `Menu` 按 title 做 key），改用 `__init__` 持有 `MenuItem` 引用改 `.title`；stale 行用第 6 占位 menu 项避免索引越界。
+- py2app 正式包可能优先加载 `Contents/Resources/lib/python39.zip` 内的 `.pyc`，即使 `lib/python3.9/` 同时有源码。更新安装版不能只替换 `.py`；必须同步实际编译模块、重新签名，并从包内导入验证行为。
 - py2app `APP` 路径用 `__file__` 基准（`os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'src', 'main.py')`），不依赖 cwd。
 - `mac_bar.py` 依赖 rumps/AppKit，**Windows 跑不了**，只 `ast.parse` 验语法；真机验证靠 Mac。
 

@@ -1,7 +1,7 @@
 # src/mac_bar.py
 """macOS 菜单栏用量条（rumps）。盲写，回家测。
-- icon：单色进度环，NSImage 矢量，填充比例=5h 额度水位
-- title：'{token} {cost} {h5_pct}'
+- icon：单色双环，内圈=5h 已用比例，外圈=周已用比例
+- title：'{token} {cost} · 5h {h5_pct} · 周 {weekly_pct}'
 - 菜单：详情 + 立即刷新 / 退出
 - 30s 刷用量、5min 后台线程查额度，主线程刷 UI
 """
@@ -22,37 +22,42 @@ LA_LABEL = 'com.zaynzhu.cc-switch-hub'  # 开机自启 LaunchAgent 标签
 LA_PLIST = os.path.expanduser('~/Library/LaunchAgents/com.zaynzhu.cc-switch-hub.plist')
 
 
-def ring_image(ratio, stale=False, size=18):
-    """NSImage 矢量画单色进度环。ratio=None 画空环；stale 加缺口。
-    template 模式单色，随深浅模式自动反色。绘制失败抛异常由调用方兜底。"""
+def ring_image(h5_ratio, weekly_ratio, stale=False, size=20):
+    """单色双环：内圈五小时、外圈一周；过期降低透明度但不改变比例。"""
     img = NSImage.alloc().initWithSize_((size, size))
     img.lockFocus()
-    NSColor.controlTextColor().set()
-    r = size / 2 - 2
-    center = (size / 2, size / 2)
-    # 背景整环（细）
-    bg = NSBezierPath.bezierPath()
-    bg.appendBezierPathWithArcWithCenter_radius_startAngle_endAngle_(
-        center, r, 0, 360)
-    bg.setLineWidth_(1.5)
-    bg.stroke()
-    # 前景填充比例（粗，从 12 点顺时针）
-    if ratio is not None:
-        fill = ratio if not stale else max(0.0, ratio - 0.08)
-        end_angle = 90 - 360 * fill
-        fg = NSBezierPath.bezierPath()
-        fg.appendBezierPathWithArcWithCenter_radius_startAngle_endAngle_(
-            center, r, 90, end_angle)
-        fg.setLineWidth_(2.5)
-        fg.stroke()
-    img.unlockFocus()
-    img.setTemplate_(True)  # 单色 template，菜单栏自动反色
+    try:
+        center = (size / 2, size / 2)
+        for ratio, radius in ((h5_ratio, size * 0.235),
+                              (weekly_ratio, size * 0.415)):
+            rect = ((center[0] - radius, center[1] - radius),
+                    (radius * 2, radius * 2))
+            # 淡色细轨道与已用额度的粗弧区分，0% 和 100% 不会看成同一种圈。
+            NSColor.blackColor().colorWithAlphaComponent_(0.18).set()
+            bg = NSBezierPath.bezierPathWithOvalInRect_(rect)
+            bg.setLineWidth_(1.0)
+            bg.stroke()
+            if ratio is None or ratio <= 0:
+                continue
+            NSColor.blackColor().colorWithAlphaComponent_(0.45 if stale else 1.0).set()
+            if ratio >= 1:
+                # 完整圆用椭圆路径，避免 90° 到 -270° 被 Cocoa 归一化为零长度。
+                fg = NSBezierPath.bezierPathWithOvalInRect_(rect)
+            else:
+                fg = NSBezierPath.bezierPath()
+                fg.appendBezierPathWithArcWithCenter_radius_startAngle_endAngle_clockwise_(
+                    center, radius, 90, 90 - 360 * ratio, True)
+            fg.setLineWidth_(2.0)
+            fg.stroke()
+    finally:
+        img.unlockFocus()
+    img.setTemplate_(True)
     return img
 
 
 class MacUsageBar(rumps.App):
     def __init__(self):
-        super().__init__(name='cc-switch 用量条', title='0 $0.00 --', icon=None)
+        super().__init__(name='cc-switch 用量条', title='0 $0.00 · 5h -- · 周 --', icon=None)
         # 详情行用 MenuItem 引用持有：rumps Menu 容器按 title 做 key，
         # 不能用整数索引 self.menu[i]（KeyError），且 title 变化后 key 也变，
         # 故持有引用直接改 .title 最稳。
@@ -102,13 +107,17 @@ class MacUsageBar(rumps.App):
         h5 = q['h5'] if q else None
         h5_used = h5['used'] if h5 else None
         h5_limit = h5['limit'] if h5 else None
-        self.title = build_title(u[0], u[1], h5_used, h5_limit)
         ratio = ring_ratio(h5_used, h5_limit)
+        weekly = q['weekly'] if q else None
+        weekly_used = weekly['used'] if weekly else None
+        weekly_limit = weekly['limit'] if weekly else None
+        weekly_ratio = ring_ratio(weekly_used, weekly_limit)
+        self.title = build_title(u[0], u[1], h5_used, h5_limit, weekly_used, weekly_limit)
         # rumps App.icon setter 只收文件路径、不接受 NSImage，直接写内部
         # _icon_nsimage 并刷 status bar。构造阶段 _nsapp 未就绪会 AttributeError，
         # _icon_nsimage 已存，run loop 启动时 setStatusBarIcon 自动取用它。
         try:
-            self._icon_nsimage = ring_image(ratio, self._stale)
+            self._icon_nsimage = ring_image(ratio, weekly_ratio, self._stale)
         except Exception:
             self._icon_nsimage = None  # 兜底：title 已含水位百分比，水位不丢
         try:
