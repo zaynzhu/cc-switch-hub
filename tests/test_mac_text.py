@@ -1,10 +1,10 @@
 from mac_text import build_title, ring_ratio, build_menu_items
 
 def test_build_title_with_quota():
-    assert build_title(69411491, 0.03, 78, 100, 100, 100) == '69.4M $0.03 · 5h 78% · 周 100%'
+    assert build_title(78, 100, 100, 100) == '78% / 100%'
 
 def test_build_title_without_quota():
-    assert build_title(0, 0.0, None, None, None, None) == '0 $0.00 · 5h -- · 周 --'
+    assert build_title(None, None, None, None) == '-- / --'
 
 def test_ring_ratio():
     assert ring_ratio(78, 100) == 0.78
@@ -46,4 +46,4 @@ def test_menu_reset_beijing():
 
 
 def test_title_zero_session_full_weekly():
-    assert build_title(0, 0, 0, 100, 100, 100) == '0 $0.00 · 5h 0% · 周 100%'
+    assert build_title(0, 100, 100, 100) == '0% / 100%'

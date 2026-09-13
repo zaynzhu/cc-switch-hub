@@ -1,7 +1,7 @@
 # src/mac_bar.py
 """macOS 菜单栏用量条（rumps）。盲写，回家测。
 - icon：单色双环，内圈=5h 已用比例，外圈=周已用比例
-- title：'{token} {cost} · 5h {h5_pct} · 周 {weekly_pct}'
+- title：'{h5_pct} / {weekly_pct}'；今日用量与花费在详情菜单显示
 - 菜单：详情 + 立即刷新 / 退出
 - 30s 刷用量、5min 后台线程查额度，主线程刷 UI
 """
@@ -57,7 +57,7 @@ def ring_image(h5_ratio, weekly_ratio, stale=False, size=20):
 
 class MacUsageBar(rumps.App):
     def __init__(self):
-        super().__init__(name='cc-switch 用量条', title='0 $0.00 · 5h -- · 周 --', icon=None)
+        super().__init__(name='cc-switch 用量条', title='-- / --', icon=None)
         # 详情行用 MenuItem 引用持有：rumps Menu 容器按 title 做 key，
         # 不能用整数索引 self.menu[i]（KeyError），且 title 变化后 key 也变，
         # 故持有引用直接改 .title 最稳。
@@ -112,7 +112,7 @@ class MacUsageBar(rumps.App):
         weekly_used = weekly['used'] if weekly else None
         weekly_limit = weekly['limit'] if weekly else None
         weekly_ratio = ring_ratio(weekly_used, weekly_limit)
-        self.title = build_title(u[0], u[1], h5_used, h5_limit, weekly_used, weekly_limit)
+        self.title = build_title(h5_used, h5_limit, weekly_used, weekly_limit)
         # rumps App.icon setter 只收文件路径、不接受 NSImage，直接写内部
         # _icon_nsimage 并刷 status bar。构造阶段 _nsapp 未就绪会 AttributeError，
         # _icon_nsimage 已存，run loop 启动时 setStatusBarIcon 自动取用它。

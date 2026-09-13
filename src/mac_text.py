@@ -4,13 +4,11 @@
 from display_text import format_tokens, format_cost, format_quota, format_reset
 
 
-def build_title(total_tokens, total_cost, h5_used, h5_limit, weekly_used, weekly_limit):
-    """菜单栏同时显示五小时、周额度，避免只看见单个窗口。"""
-    tok = format_tokens(total_tokens)
-    cost = format_cost(total_cost)
+def build_title(h5_used, h5_limit, weekly_used, weekly_limit):
+    """菜单栏紧凑显示五小时 / 周百分比，用量与花费保留在详情。"""
     h5 = format_quota(h5_used, h5_limit)  # 无额度返回 '--'
     weekly = format_quota(weekly_used, weekly_limit)
-    return f'{tok} {cost} · 5h {h5} · 周 {weekly}'
+    return f'{h5} / {weekly}'
 
 
 def ring_ratio(used, limit):
