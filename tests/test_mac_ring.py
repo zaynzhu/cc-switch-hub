@@ -89,6 +89,6 @@ def test_ui_maps_session_and_weekly_to_both_rings_and_title(monkeypatch):
     monkeypatch.setattr(mac_bar, 'ring_image', draw)
     mac_bar.MacUsageBar._update_ui(bar)
     assert seen == [(0.0, 1.0, False)]
-    assert bar.title == '0% / 100%'
+    assert bar.title == '0 $0.00 · 0% · 100%'
     assert bar._m_h5.title.startswith('5h: 0%')
     assert bar._m_week.title.startswith('周: 100%')

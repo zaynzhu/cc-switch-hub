@@ -32,7 +32,7 @@ Windows 任务栏窄条 + macOS 菜单栏常驻用量条，显示 Claude Code（
 - `src/main.py` 的 `run_windows()`：30s/5min QTimer、`QuotaWorker`(QThread) 后台额度、托盘、位置记忆、开机自启勾选项（写启动文件夹 `.lnk`，`frozen` 分叉：打包态指 exe / 脚本态 `pythonw.exe`）
 
 **macOS UI**：
-- `src/mac_text.py`：纯函数 `build_title`（常驻文字仅显示五小时 / 周百分比，如 0% / 100%；token 与花费在详情中） / `ring_ratio` / `build_menu_items`（不依赖 rumps，Windows 可测）
+- `src/mac_text.py`：纯函数 `build_title`（常驻文字保留 token、花费与双百分比，仅省略 5h / 周标签，如 69.4M $0.03 · 0% · 100%） / `ring_ratio` / `build_menu_items`（不依赖 rumps，Windows 可测）
 - `src/mac_bar.py`：`MacUsageBar(rumps.App)` + `ring_image`（NSImage 单色双环，内圈 5h、外圈周额度）+ `@rumps.timer` + `threading` 后台额度 + 开机自启菜单项（LaunchAgent，写 `~/Library/LaunchAgents/` 不 load）；`run()` 入口，启动 1s timer 刷 icon
 - `src/main.py` 的 `run_mac()`：调 `mac_bar.run()`
 

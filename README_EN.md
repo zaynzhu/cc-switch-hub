@@ -50,7 +50,7 @@ pip install rumps
 python src/main.py
 ```
 
-A menubar item appears: dual-ring icon (inner = 5h usage, outer = weekly usage) + `58% / 68%` text (5h on the left, weekly on the right); click for tokens, cost, recent model, and full details.
+A menubar item appears: dual-ring icon (inner = 5h usage, outer = weekly usage) + `69.4M $0.03 · 58% · 68%` text (5h on the left, weekly on the right); click for tokens, cost, recent model, and full details.
 
 ## 📦 Installation
 
