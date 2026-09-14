@@ -28,7 +28,7 @@ Windows 任务栏窄条 + macOS 菜单栏常驻用量条，显示 Claude Code（
 - `src/display_text.py`：纯函数格式化；`format_reset` 将带时区的 API 重置时间转为北京时间，两端共用，未知时间不猜测
 
 **Windows UI**：
-- `src/widget.py`：`UsageWidget` 无边框窗口（`update_data`、`RingWidget` 进度环自绘水位+档位色、`_stale` 变灰、`moved` / `refresh_requested` 信号）
+- `src/widget.py`：`UsageWidget` 无边框窗口（`update_data`、`RingWidget` 双进度环自绘水位+档位色、`_detail_lines` 详情行供 tooltip/右键共用、`_stale` 变灰、`moved` / `refresh_requested` 信号）
 - `src/main.py` 的 `run_windows()`：30s/5min QTimer、`QuotaWorker`(QThread) 后台额度、托盘、位置记忆、开机自启勾选项（写启动文件夹 `.lnk`，`frozen` 分叉：打包态指 exe / 脚本态 `pythonw.exe`）
 
 **macOS UI**：
@@ -55,7 +55,9 @@ Windows 任务栏窄条 + macOS 菜单栏常驻用量条，显示 Claude Code（
 - QThread 必须用集合（`_workers`）持有引用直到 `finished`，否则被 GC 触发 `QThread destroyed while running` 启动崩溃。
 - 富文本 QLabel 会拦截鼠标事件导致拖不动 → `WA_TransparentForMouseEvents`；富文本不支持 `AlignVCenter` → 圆点与文字拆双纯文本 label。
 - 开机自启用 `getattr(sys,'frozen',False)` 分叉：打包态（PyInstaller onefile）`sys.executable` 即 exe，快捷方式直接指它、无 Arguments；脚本态才找 `pythonw.exe` + `main.py`。写 `.lnk` 走 PowerShell `WScript.Shell` COM（`subprocess` 调 `powershell -NoProfile -Command`），无新依赖。
-- 进度环 `RingWidget` 用 QPainter 画弧（`QRectF`+`drawArc`，从 12 点 90° 顺时针），填充=`ring_ratio`（5h 水位），色=档位；Windows 保留单圈，macOS 使用内外双环。无额度画空环、stale 灰弧保留上次水位。
+- 进度环 `RingWidget` 双环用 QPainter 画弧（`QRectF`+`drawArc`，从 12 点 90° 顺时针），内圈=5h、外圈=周额度，各环独立取档位色（不取两档较高值），几何对齐 `mac_bar.ring_image`（半径 0.235/0.415，Windows 18px、线宽 1.8/2.4 留 ≥1px 环间空隙）。无额度只画轨道、stale 灰弧保留上次水位。
+- 右键菜单顶部详情行（置灰不可点）与 tooltip 共用 `_detail_lines()`，含 5h/周重置时间；Ollama 不提供 5h 重置时间显示 `--` 属预期。
+- 未激活 Tool 窗口 tooltip 悬停不显示（Windows 默认只给激活窗口出 tooltip，窄条 `WA_ShowWithoutActivating` 永不激活）→ 顶级窗口设 `WA_AlwaysShowToolTips`；注意 `QApplication` 不是 QWidget 没有 `setAttribute`，该开关设在窗口 widget 上。
 - 托盘图标用 `ripple.ico`，`_resource_path` 定位：打包态从 `sys._MEIPASS` 读、脚本态从 `build/` 读；`win_build.ps1` 必须 `--add-data` 把 ico 打进 exe，否则打包态 `QIcon` 加载不到。
 - 位置记忆 `SETTINGS_PATH` 必须 frozen 分叉：打包态（onefile）`__file__` 指向 `_MEIPASS` 临时解压目录、退出即删，记忆写那里等于每次启动清零（用户"拖了白拖"）；打包态改存 exe 同目录（`settings.json` 已被 .gitignore 全局忽略）。记忆带 `screen` 屏幕归属，恢复时校验坐标仍归属记忆屏（`resolve_restore_pos`），布局变化回主屏默认；无有效记忆时 `place_default` 固定用 `QApplication.primaryScreen()` 顶部居中，**不要用 `screenAt(窗口当前位置)` 判屏**（启动时序漂移会吸附到错误的屏）。
 

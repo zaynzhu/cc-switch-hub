@@ -22,11 +22,11 @@
 
 ## ✨ Features
 
-- **Windows taskbar strip** — frameless always-on-top, progress ring (fill = 5h level, color by tier green/amber/red/grey) + usage text, hugging the taskbar
+- **Windows taskbar strip** — frameless always-on-top, dual progress rings (inner = 5h usage, outer = weekly usage, each colored by tier green/amber/red/grey) + usage text, hugging the taskbar
 - **macOS menubar** — built with rumps, monochrome dual-ring icon (inner = 5h usage, outer = weekly usage) + usage text, click for full details
 - **Today's usage** — tokens, estimated cost, recent model, refreshes every 30s
 - **Package quota level** — Kimi / Zhipu GLM / Ollama Cloud legacy 5-hour window & weekly quota %, refreshes every 5min
-- **Status indicator** — Windows progress ring color + fill ratio / Mac dual-ring fill ratios, gauge quota level at a glance
+- **Status indicator** — Windows / Mac both use dual rings (inner 5h, outer weekly) fill ratio + tier color, gauge quota level at a glance
 - **Reuses cc-switch data** — reads cc-switch.db + settings.json + provider quota APIs, no reinvented wheels
 - **Quota failure tolerance** — keeps last data on API failure and marks it stale, never zeroes out
 - **Position memory** — Windows strip is draggable with position memory; Mac menubar is native
@@ -41,7 +41,7 @@
 "E:/program/tool/python/python.exe" src/main.py
 ```
 
-A frameless always-on-top strip appears at the top-center of the primary screen. Draggable (position memory, across monitors), right-click for "Refresh now / Launch at login / Quit".
+A frameless always-on-top strip appears at the top-center of the primary screen. Draggable (position memory, across monitors), right-click for quota details, "Refresh now / Quit"; launch-at-login lives in the tray menu.
 
 ### macOS
 
@@ -98,8 +98,8 @@ hdiutil create -volname "cc-switch-hub" -srcfolder dist/cc-switch-hub.app -ov -f
 
 ### Windows strip
 
-- Drag to reposition (position memory, across monitors), right-click for "Refresh now / Launch at login / Quit"
-- Progress ring: fill ratio = 5h quota level, color by tier (🟢 healthy / 🟡 near limit / 🔴 over limit / ⚪ no data or stale)
+- Drag to reposition (position memory, across monitors); right-click shows quota details (today / recent model / 5h / weekly reset time) plus "Refresh now / Quit"; launch-at-login lives in the tray menu
+- Dual progress rings: inner = 5h quota level, outer = weekly quota, each colored by tier (🟢 healthy / 🟡 near limit / 🔴 over limit / ⚪ no data or stale)
 - Hover for full tooltip (today / cost / recent model / 5h / weekly / reset time)
 
 ### macOS menubar
