@@ -17,38 +17,56 @@ BG_COLOR = 'transparent'
 
 
 class RingWidget(QWidget):
-    """自绘进度环：背景整环 + 前景弧按 5h 水位填充，颜色随档位。
+    """自绘双进度环：内圈 5h、外圈周额度，各弧取各自档位色。
     对齐 mac_bar.ring_image 的几何，QPainter 等价实现。"""
+
+    SIZE = 18
+    # 半径按 macOS 比例（0.235/0.415），线宽略缩保证两环间留 ≥1px 空隙
+    INNER_R = SIZE * 0.235
+    INNER_W = 1.8
+    OUTER_R = SIZE * 0.415
+    OUTER_W = 2.4
 
     def __init__(self):
         super().__init__()
-        self._ratio = None  # 0-1 填充比例，None=无额度画空环
-        self._color = COLORS['grey']
-        self.setFixedSize(14, 14)
+        self._h5_ratio = None     # 内圈 0-1 填充比例，None=无额度画空环
+        self._h5_color = COLORS['grey']
+        self._weekly_ratio = None  # 外圈周额度比例
+        self._weekly_color = COLORS['grey']
+        self.setFixedSize(self.SIZE, self.SIZE)
         self.setAttribute(Qt.WA_TransparentForMouseEvents, True)
 
-    def set_state(self, ratio, color):
-        self._ratio = ratio
-        self._color = color
+    def set_state(self, h5_ratio, h5_color, weekly_ratio, weekly_color):
+        self._h5_ratio = h5_ratio
+        self._h5_color = h5_color
+        self._weekly_ratio = weekly_ratio
+        self._weekly_color = weekly_color
         self.update()
+
+    def _draw_ring(self, p, radius, width, ratio, color):
+        c = self.width() / 2
+        rect = QRectF(c - radius, c - radius, 2 * radius, 2 * radius)
+        # 轨道整环（细，半透明）
+        bg = QPen(QColor(255, 255, 255, 60))
+        bg.setWidthF(1.0)
+        p.setPen(bg)
+        p.drawArc(rect, 0, 360 * 16)
+        # 填充弧（档位色，从 12 点顺时针）；无额度或 0% 只画轨道
+        if not ratio:
+            return
+        fg = QPen(QColor(color))
+        fg.setWidthF(width)
+        p.setPen(fg)
+        # 满圈画 -360° 整圆，Qt 不会像 Cocoa 那样把整周归一化为零
+        p.drawArc(rect, 90 * 16, int(-360 * min(ratio, 1.0) * 16))
 
     def paintEvent(self, _e):
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing)
-        r = self.width() / 2 - 2
-        c = self.width() / 2
-        rect = QRectF(c - r, c - r, 2 * r, 2 * r)
-        # 背景整环（细，半透明）
-        bg = QPen(QColor(255, 255, 255, 60))
-        bg.setWidthF(1.5)
-        p.setPen(bg)
-        p.drawArc(rect, 0, 360 * 16)
-        # 前景填充弧（粗，档位色，从 12 点顺时针）
-        if self._ratio:
-            fg = QPen(QColor(self._color))
-            fg.setWidthF(2.5)
-            p.setPen(fg)
-            p.drawArc(rect, 90 * 16, int(-360 * self._ratio * 16))
+        self._draw_ring(p, self.OUTER_R, self.OUTER_W,
+                        self._weekly_ratio, self._weekly_color)
+        self._draw_ring(p, self.INNER_R, self.INNER_W,
+                        self._h5_ratio, self._h5_color)
 
 
 class UsageWidget(QWidget):
@@ -67,7 +85,6 @@ class UsageWidget(QWidget):
         self._drag_pos = None
         self._user_moved = False  # 用户拖动过则不再自动居中
 
-        self._dot_color = COLORS['grey']
         # 整条背景画在 widget 上、label 透明，避免双 label 间背景断裂
         self.setObjectName('UsageWidget')
         self.setAttribute(Qt.WA_StyledBackground, True)
@@ -101,17 +118,16 @@ class UsageWidget(QWidget):
 
         text = build_display_text(usage[0], usage[1], usage[2], self._quota)
 
-        # 环色：过期或无额度 → 灰；有额度取 5h/周较高档
+        # 双环色：过期或无额度 → 灰；有额度各环取各自档位色
         if self._stale or not self._quota:
-            self._dot_color = COLORS['grey']
+            h5_color = wk_color = COLORS['grey']
         else:
-            c5 = quota_color(self._quota['h5']['used'], self._quota['h5']['limit'])
-            cw = quota_color(self._quota['weekly']['used'], self._quota['weekly']['limit'])
-            rank = {'normal': 0, 'orange': 1, 'red': 2}
-            self._dot_color = COLORS[max([c5, cw], key=lambda c: rank[c])]
-        # 环填充比例：5h 水位（stale 用上次额度数据，灰弧表过期）
-        ratio = ring_ratio(self._quota['h5']['used'], self._quota['h5']['limit']) if self._quota else None
-        self._ring.set_state(ratio, self._dot_color)
+            h5_color = COLORS[quota_color(self._quota['h5']['used'], self._quota['h5']['limit'])]
+            wk_color = COLORS[quota_color(self._quota['weekly']['used'], self._quota['weekly']['limit'])]
+        # 双环填充比例：内圈 5h、外圈周（stale 用上次额度数据，灰弧表过期）
+        h5_ratio = ring_ratio(self._quota['h5']['used'], self._quota['h5']['limit']) if self._quota else None
+        wk_ratio = ring_ratio(self._quota['weekly']['used'], self._quota['weekly']['limit']) if self._quota else None
+        self._ring.set_state(h5_ratio, h5_color, wk_ratio, wk_color)
 
         self._text_label.setText(text)
         self.adjustSize()
