@@ -25,7 +25,7 @@ Windows 任务栏窄条 + macOS 菜单栏常驻用量条，显示 Claude Code（
 **数据层（平台无关，两边复用）**：
 - `src/usage_reader.py`：只读 db 汇总今日 token / 花费 / 近用模型 → `get_today_usage(db_path)`
 - `src/quota_fetcher.py`：`get_current_provider` 读当前厂商、`detect_provider_type` 判型、`fetch_kimi_quota` / `fetch_zhipu_quota` / `fetch_ollama_quota` / 统一入口 `fetch_quota`
-- `src/display_text.py`：纯函数格式化；`format_reset` 将带时区的 API 重置时间转为北京时间，两端共用，未知时间不猜测
+- `src/display_text.py`：纯函数格式化；`format_reset` 将带时区的 API 重置时间转为北京时间，两端共用，未知时间不猜测；`format_reset_line` 按 `reset_source` 区分口径（api → `重置 X`，estimated → `预计重置 X（本地推算）`，未知 → `重置 --`）
 
 **Windows UI**：
 - `src/widget.py`：`UsageWidget` 无边框窗口（`update_data`、`RingWidget` 双进度环自绘水位+档位色、`_detail_lines` 详情行供 tooltip/右键共用、`_stale` 变灰、`moved` / `refresh_requested` 信号）
@@ -49,7 +49,7 @@ Windows 任务栏窄条 + macOS 菜单栏常驻用量条，显示 Claude Code（
 - 不识别厂商或查询失败返回 None；从未成功时显示未知，已有数据则沿用 stale（Windows 变灰、macOS 变淡并在菜单标记），勿清空。
 
 - Ollama Cloud legacy：仅识别 `ollama.com` 主机，复用当前 Provider 的真实 `ANTHROPIC_AUTH_TOKEN`，Bearer 请求固定 `https://ollama.com/api/usage`。`limits.session/weekly.usage` 为 0～1 已用比例，映射 `used=usage*100, limit=100`；缺字段、非数值、越界或请求失败返回 None。新增请求按服务限流，两秒内重复调用返回 None，沿用 stale。
-- Ollama 接口不提供 reset：session 为 None；weekly 按下一次周一 00:00 UTC（北京时间周一 08:00）本地推算，reset 文本按北京时间显示并明确带“本地推算”，不得当成 API 返回时间。
+- 所有 tier 带 `reset_source`（`api` = 接口真实返回 / `estimated` = 客户端推算 / None = 未知）。Ollama weekly 已实账号验证周一 00:00 UTC 刷新 → `next_ollama_weekly_reset(now)` 纯函数算严格晚于 now 的周一，数据层存 UTC ISO，**不得写死北京时间**，展示层 `format_reset_line` 转北京并标`预计重置…（本地推算）`。Ollama session：窗口起点规则未验证，**不做任何 5h 推算**（current+5h、usage>0 当起点、quota_state.json 持久化都禁）→ `reset=None, reset_source=None` 显示 `--`；后续确认固定 epoch 后再加 `next_ollama_session_reset`。
 
 ### Windows
 - QThread 必须用集合（`_workers`）持有引用直到 `finished`，否则被 GC 触发 `QThread destroyed while running` 启动崩溃。
