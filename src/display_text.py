@@ -15,6 +15,19 @@ def format_reset(value):
         return value
 
 
+def format_reset_line(reset, source=None):
+    """详情行尾的重置片段，按来源区分口径：
+    - source == 'estimated'（如 Ollama weekly）：'预计重置 <北京时间>（本地推算）'
+    - source == 'api'（Kimi / 智谱真实返回）：'重置 <北京时间>'
+    - reset 为 None：'重置 --'，未知不猜测
+    """
+    if not reset:
+        return '重置 --'
+    if source == 'estimated':
+        return f'预计重置 {format_reset(reset)}（本地推算）'
+    return f'重置 {format_reset(reset)}'
+
+
 def format_tokens(n):
     if n >= 1_000_000:
         return f'{n / 1_000_000:.1f}M'

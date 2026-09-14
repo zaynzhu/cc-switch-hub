@@ -55,3 +55,16 @@ def test_format_reset_beijing():
     assert format_reset(None) == '--'
     assert format_reset('2026-09-14T00:00:00') == '2026-09-14T00:00:00'
     assert format_reset('2026-09-14 08:00 北京时间（本地推算）') == '2026-09-14 08:00 北京时间（本地推算）'
+
+
+def test_format_reset_line():
+    from display_text import format_reset_line
+    # API 返回的重置时间：不加"预计"，保持原行为
+    assert format_reset_line('2026-09-14T00:00:00Z', 'api') == '重置 2026-09-14 08:00 北京时间'
+    assert format_reset_line('2026-09-14T00:00:00Z', None) == '重置 2026-09-14 08:00 北京时间'
+    # 客户端推算的重置时间：标注"预计"+"本地推算"（北京时间显示）
+    line = format_reset_line('2026-09-21T00:00:00+00:00', 'estimated')
+    assert line == '预计重置 2026-09-21 08:00 北京时间（本地推算）'
+    # 未知时间：不猜测，显示 --
+    assert format_reset_line(None, None) == '重置 --'
+    assert format_reset_line(None, 'estimated') == '重置 --'

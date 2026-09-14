@@ -44,8 +44,10 @@ def test_fetch_kimi_quota_parse(monkeypatch):
     monkeypatch.setattr("urllib.request.urlopen",
                         lambda req, timeout=10: _FakeResp(body))
     q = fetch_kimi_quota("https://api.kimi.com/coding", "sk-test")
-    assert q == {"weekly": {"used": 68, "limit": 100, "reset": "2026-08-07T12:51:12Z"},
-                 "h5": {"used": 78, "limit": 100, "reset": "2026-08-07T11:51:12Z"}}
+    assert q == {"weekly": {"used": 68, "limit": 100, "reset": "2026-08-07T12:51:12Z",
+                            "reset_source": "api"},
+                 "h5": {"used": 78, "limit": 100, "reset": "2026-08-07T11:51:12Z",
+                        "reset_source": "api"}}
 
 def test_fetch_kimi_quota_failure(monkeypatch):
     def boom(req, timeout=10): raise Exception("net err")
@@ -131,6 +133,7 @@ def test_fetch_zhipu_quota_parse(monkeypatch):
     assert q['weekly']['used'] == 68
     assert q['weekly']['limit'] == 100
     assert q['h5']['reset'] is not None and q['weekly']['reset'] is not None
+    assert q['h5']['reset_source'] == 'api' and q['weekly']['reset_source'] == 'api'
 
 
 def test_fetch_zhipu_quota_auth_header(monkeypatch):

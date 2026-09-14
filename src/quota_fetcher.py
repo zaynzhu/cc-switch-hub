@@ -65,9 +65,9 @@ def fetch_kimi_quota(base_url, token, timeout=10):
                   if l['window']['duration'] == 300)['detail']
         return {
             'weekly': {'used': int(weekly['used']), 'limit': int(weekly['limit']),
-                       'reset': weekly['resetTime']},
+                       'reset': weekly['resetTime'], 'reset_source': 'api'},
             'h5': {'used': int(h5['used']), 'limit': int(h5['limit']),
-                   'reset': h5['resetTime']},
+                   'reset': h5['resetTime'], 'reset_source': 'api'},
         }
     except (KeyError, StopIteration, ValueError, TypeError):
         return None
@@ -138,7 +138,7 @@ def _ms_to_iso(ms):
 
 
 def _none_tier():
-    return {'used': None, 'limit': None, 'reset': None}
+    return {'used': None, 'limit': None, 'reset': None, 'reset_source': None}
 
 
 def fetch_zhipu_quota(base_url, api_key, timeout=15):
@@ -176,6 +176,7 @@ def fetch_zhipu_quota(base_url, api_key, timeout=15):
             'used': used_val,
             'limit': 100 if used_val is not None else None,
             'reset': _ms_to_iso(item.get('nextResetTime')),
+            'reset_source': 'api',
         }
         unit = item.get('unit')
         if unit == 3 and h5['used'] is None:
@@ -189,14 +190,19 @@ def fetch_zhipu_quota(base_url, api_key, timeout=15):
     return {'h5': h5, 'weekly': weekly}
 
 
-def _ollama_weekly_reset(now):
-    """本地推算下一次周一 00:00 UTC；接口未提供重置时间。"""
-    now = now.astimezone(timezone.utc)
+def next_ollama_weekly_reset(now_utc):
+    """严格晚于 now 的下一个周一 00:00 UTC（timezone-aware UTC datetime）。
+
+    已用真实 Ollama legacy 账号验证：UTC 周日满额后，北京时间周一 08:00
+    （即 UTC 周一 00:00）查询 weekly.usage 已被刷新。
+    接口本身不返回该时间，属客户端推算（reset_source='estimated'），
+    显示层再转本机时区，不得在数据层写死北京时间。"""
+    now = now_utc.astimezone(timezone.utc)
     midnight = now.replace(hour=0, minute=0, second=0, microsecond=0)
-    reset = midnight + timedelta(days=7 - now.weekday())
-    # reset 在现有两端均作为文本显示，直接注明来源以免冒充 API 时间。
-    beijing = reset.astimezone(timezone(timedelta(hours=8)))
-    return beijing.strftime('%Y-%m-%d %H:%M') + ' 北京时间（本地推算）'
+    reset = midnight + timedelta(days=(7 - now.weekday()) % 7)
+    if reset <= now:
+        reset += timedelta(days=7)  # 恰在周一 00:00 UTC：当周窗口已开始，取下周
+    return reset
 
 
 def fetch_ollama_quota(api_key, timeout=10):
@@ -218,9 +224,13 @@ def fetch_ollama_quota(api_key, timeout=10):
                     or not 0 <= usage <= 1):
                 return None
         return {
-            'h5': {'used': session * 100, 'limit': 100, 'reset': None},
+            # session 只给使用率不给窗口起点：reset 暂时保持未知，不做任何推算
+            'h5': {'used': session * 100, 'limit': 100,
+                   'reset': None, 'reset_source': None},
             'weekly': {'used': weekly * 100, 'limit': 100,
-                       'reset': _ollama_weekly_reset(datetime.now(timezone.utc))},
+                       'reset': next_ollama_weekly_reset(
+                           datetime.now(timezone.utc)).isoformat(),
+                       'reset_source': 'estimated'},
         }
     except Exception:
         # 包含网络、HTTP、JSON 与接口结构变化；不记录凭据或异常内容。

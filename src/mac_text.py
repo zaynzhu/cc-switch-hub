@@ -1,7 +1,8 @@
 # src/mac_text.py
 """Mac 菜单栏用量条的纯函数：title 文本、进度环比例、菜单详情。
 不依赖 rumps/AppKit，可在 Windows 单测。"""
-from display_text import format_tokens, format_cost, format_quota, format_reset
+from display_text import (format_tokens, format_cost, format_quota,
+                          format_reset_line)
 
 
 def build_title(total_tokens, total_cost, h5_used, h5_limit, weekly_used, weekly_limit):
@@ -30,10 +31,10 @@ def build_menu_items(total_tokens, total_cost, last_model, quota, stale):
     if quota:
         h5 = quota['h5']
         wk = quota['weekly']
-        items.append(
-            f"5h: {format_quota(h5['used'], h5['limit'])} 重置 {format_reset(h5['reset'])}")
-        items.append(
-            f"周: {format_quota(wk['used'], wk['limit'])} 重置 {format_reset(wk['reset'])}")
+        items.append('5h: ' + format_quota(h5['used'], h5['limit']) + ' '
+                     + format_reset_line(h5['reset'], h5.get('reset_source')))
+        items.append('周: ' + format_quota(wk['used'], wk['limit']) + ' '
+                     + format_reset_line(wk['reset'], wk.get('reset_source')))
         if stale:
             items.append('(额度数据已过期)')
     return items

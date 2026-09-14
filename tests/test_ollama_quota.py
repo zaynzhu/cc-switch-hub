@@ -54,16 +54,22 @@ def test_request_and_display(monkeypatch):
         return _FakeResp(json.dumps(payload()).encode())
     monkeypatch.setattr('urllib.request.urlopen', request)
     quota = fetcher.fetch_quota('https://ollama.com/v1', 'synthetic-key', timeout=7)
-    assert quota['h5'] == {'used': 0.234 * 100, 'limit': 100, 'reset': None}
+    # h5：接口无重置时间，reset 与来源都未知，不猜测
+    assert quota['h5'] == {'used': 0.234 * 100, 'limit': 100,
+                           'reset': None, 'reset_source': None}
+    # weekly：reset 存 UTC ISO 字符串（带时区），来源标注 estimated
     assert quota['weekly']['used'] == 81
     assert quota['weekly']['limit'] == 100
-    assert '北京时间（本地推算）' in quota['weekly']['reset']
+    assert quota['weekly']['reset_source'] == 'estimated'
+    reset = datetime.fromisoformat(quota['weekly']['reset'])
+    assert reset.tzinfo is not None
+    assert reset.astimezone(reset.tzinfo) == reset  # 已是 tz-aware
     assert build_display_text(0, 0, None, quota).endswith('5h 23% · 周 81%')
     assert build_title(0, 0, 23.4, 100, 81, 100) == '0 $0.00 · 23% · 81%'
     assert ring_ratio(quota['h5']['used'], 100) == pytest.approx(0.234)
     items = build_menu_items(0, 0, None, quota, True)
     assert items[3] == '5h: 23% 重置 --'
-    assert items[4].startswith('周: 81% 重置 ')
+    assert items[4].startswith('周: 81% 预计重置 ')
     assert '本地推算' in items[4]
     assert items[5] == '(额度数据已过期)'
 
@@ -118,16 +124,23 @@ def test_request_failure(monkeypatch, capsys, error):
 
 
 @pytest.mark.parametrize(('now', 'expected'), [
-    ('2026-09-13T23:59:59+00:00', '2026-09-14'),
-    ('2026-09-14T00:00:00+00:00', '2026-09-21'),
-    ('2026-09-14T00:00:01+00:00', '2026-09-21'),
-    ('2026-09-14T07:59:59+08:00', '2026-09-14'),
-    ('2026-09-14T08:00:00+08:00', '2026-09-21'),
-    ('2026-12-31T12:00:00+00:00', '2027-01-04'),
+    ('2026-09-13T23:59:59+00:00', '2026-09-14T00:00:00+00:00'),  # 周日午夜前 → 明天周一
+    ('2026-09-14T00:00:00+00:00', '2026-09-21T00:00:00+00:00'),  # 恰在周一 00:00 UTC → 严格取下周
+    ('2026-09-14T00:00:01+00:00', '2026-09-21T00:00:00+00:00'),  # 周一 00:00 已过 → 下周
+    ('2026-09-14T07:59:59+08:00', '2026-09-14T00:00:00+00:00'),  # 北京 周一 07:59（仍是周日 UTC）
+    ('2026-09-14T08:00:00+08:00', '2026-09-21T00:00:00+00:00'),  # 北京 周一 08:00 = UTC 00:00 → 下周
+    ('2026-09-30T12:00:00+00:00', '2026-10-05T00:00:00+00:00'),  # 跨月
+    ('2026-12-31T12:00:00+00:00', '2027-01-04T00:00:00+00:00'),  # 跨年
 ])
-def test_weekly_reset_utc_boundary(now, expected):
-    assert fetcher._ollama_weekly_reset(datetime.fromisoformat(now)) == (
-        expected + ' 08:00 北京时间（本地推算）')
+def test_next_weekly_reset(now, expected):
+    """实账号验证规则：weekly.usage 于周一 00:00 UTC 刷新 → 严格晚于 now 的下个周一。"""
+    now_dt = datetime.fromisoformat(now)
+    expected_dt = datetime.fromisoformat(expected)
+    reset = fetcher.next_ollama_weekly_reset(now_dt)
+    assert reset == expected_dt
+    assert reset.tzinfo is not None        # timezone-aware
+    assert reset.utcoffset().total_seconds() == 0  # 统一 UTC
+    assert reset > now_dt                   # 严格晚于 now
 
 
 def test_rate_limit(monkeypatch, response):
