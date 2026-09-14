@@ -132,20 +132,8 @@ class UsageWidget(QWidget):
         self._text_label.setText(text)
         self.adjustSize()
 
-        # tooltip 完整数字
-        tip = (f"今日: {usage[0]} tok / {usage[1]:.4f} USD\n"
-               f"近用模型: {usage[2] or '--'}")
-        if self._quota:
-            def _tier_txt(t):
-                u = t['used'] if t['used'] is not None else '--'
-                l = t['limit'] if t['limit'] is not None else '--'
-                r = format_reset(t['reset'])
-                return f"{u}/{l} 重置 {r}"
-            tip += (f"\n5h: {_tier_txt(self._quota['h5'])}\n"
-                    f"周: {_tier_txt(self._quota['weekly'])}")
-            if self._stale:
-                tip += '\n(额度数据已过期)'
-        self.setToolTip(tip)
+        # tooltip 完整数字（与右键菜单详情行共用）
+        self.setToolTip('\n'.join(self._detail_lines()))
 
         # 文本变长后位置调整：用户拖动过则防超屏，否则保持顶部居中
         if self._user_moved:
@@ -171,9 +159,32 @@ class UsageWidget(QWidget):
         x = g.left() + (g.width() - self.width()) // 2
         self.move(x, g.top())
 
-    # 右键菜单：立即刷新 / 退出
+    def _detail_lines(self):
+        """详情行：今日用量/花费、近用模型、5h/周额度与重置时间。
+        tooltip 与右键菜单顶部共用，无额度时只有前两行。"""
+        u = self._usage
+        lines = [f"今日: {u[0]} tok / {u[1]:.4f} USD",
+                 f"近用模型: {u[2] or '--'}"]
+        if self._quota:
+            def _tier_txt(t):
+                u = t['used'] if t['used'] is not None else '--'
+                l = t['limit'] if t['limit'] is not None else '--'
+                r = format_reset(t['reset'])
+                return f"{u}/{l} 重置 {r}"
+            lines.append(f"5h: {_tier_txt(self._quota['h5'])}")
+            lines.append(f"周: {_tier_txt(self._quota['weekly'])}")
+            if self._stale:
+                lines.append('(额度数据已过期)')
+        return lines
+
+    # 右键菜单：详情行 / 立即刷新 / 退出
     def contextMenuEvent(self, e):
         menu = QMenu(self)
+        # 详情行置灰不可点，仅展示（对齐 macOS 菜单的 5h/周重置时间）
+        for line in self._detail_lines():
+            act = menu.addAction(line)
+            act.setEnabled(False)
+        menu.addSeparator()
         act_refresh = menu.addAction('立即刷新')
         act_refresh.triggered.connect(self.refresh_requested.emit)
         act_quit = menu.addAction('退出')

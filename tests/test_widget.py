@@ -96,6 +96,22 @@ def test_ollama_display_and_stale(qapp, monkeypatch):
     w.close()
 
 
+def test_detail_lines(qapp):
+    w = UsageWidget()
+    # 无额度：只有今日/近用两行
+    assert w._detail_lines() == ['今日: 0 tok / 0.0000 USD', '近用模型: --']
+    w.update_data((69411491, 60.732, 'kimi-k3'),
+                  {'h5': {'used': 78, 'limit': 100, 'reset': '2026-09-13T23:30:00Z'},
+                   'weekly': {'used': 68, 'limit': 100, 'reset': None}})
+    lines = w._detail_lines()
+    assert lines[0] == '今日: 69411491 tok / 60.7320 USD'
+    assert lines[1] == '近用模型: kimi-k3'
+    assert '2026-09-14 07:30 北京时间' in lines[2]
+    assert '重置 --' in lines[3]
+    w.update_data((0, 0, None), None)  # 接口失败 → stale 提示行
+    assert '(额度数据已过期)' in w._detail_lines()
+
+
 def test_tooltip_reset_beijing(qapp):
     quota = {'h5': {'used': 10, 'limit': 100, 'reset': '2026-09-13T23:30:00Z'},
              'weekly': {'used': 20, 'limit': 100, 'reset': '2026-09-14T00:00:00+00:00'}}
