@@ -19,4 +19,12 @@ $py = "E:/program/tool/python/python.exe"
     --add-data "$PSScriptRoot\ripple.ico;." `
     src/main.py
 
+# 原生命令失败不触发 $ErrorActionPreference，必须显式透传退出码，
+# 否则 exe 被占用（PermissionError）时脚本仍 exit 0，误报"打包成功"
+if ($LASTEXITCODE -ne 0) {
+    Write-Error "PyInstaller 打包失败（exit $LASTEXITCODE）；常见原因：dist/cc-switch-hub.exe 被运行中的用量条进程占用，先退出再打包"
+    exit $LASTEXITCODE
+}
+
 Write-Host "产物：dist/cc-switch-hub.exe"
+exit 0
