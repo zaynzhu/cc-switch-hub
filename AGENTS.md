@@ -9,7 +9,7 @@ Windows 任务栏窄条 + macOS 菜单栏常驻用量条，显示 Claude Code（
 - **必须用 tool python**：`E:/program/tool/python/python.exe`（3.12.8）。**不要用 Anaconda**——其 `Library/bin/msvcp140.dll`（VS2019）与 PySide6 所需 VS2022 运行时冲突，`PySide6.QtWidgets` 无法加载。
 - 运行：`"E:/program/tool/python/python.exe" src/main.py`
 - 装包：`"E:/program/tool/python/python.exe" -m pip install PySide6`
-- 打包：`pyinstaller` 已装则 `powershell -ExecutionPolicy Bypass -File build/win_build.ps1`，产物 `dist/cc-switch-hub.exe`（`--onefile --noconsole`，~47MB，图标 `build/ripple.ico`；**不用** `--collect-all PySide6`，靠 PyInstaller hook 自动收集，否则体积臃肿至 ~248MB）
+- 打包：`pyinstaller` 已装则 `powershell -ExecutionPolicy Bypass -File build/win_build.ps1`，产物 `dist/cc-switch-hub.exe`（`--onefile --noconsole`，~47MB，图标 `build/ripple.ico`；**不用** `--collect-all PySide6`，靠 PyInstaller hook 自动收集，否则体积臃肿至 ~248MB）。**打包前先退出运行中的用量条进程**（exe 被占用 → PermissionError；脚本失败会报错退出，不再假成功），打完核对 exe 的 `LastWriteTime`。
 
 ### macOS
 
