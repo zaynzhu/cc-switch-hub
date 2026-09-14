@@ -78,6 +78,9 @@ class UsageWidget(QWidget):
         self.setWindowFlags(
             Qt.Tool | Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint)
         self.setAttribute(Qt.WA_ShowWithoutActivating, True)
+        # 窄条从不激活（WA_ShowWithoutActivating），Windows 默认只给激活窗口
+        # 显示 tooltip，悬停永远出不来 → 顶级窗口设"未激活也显示"开关
+        self.setAttribute(Qt.WA_AlwaysShowToolTips, True)
         self.setAttribute(Qt.WA_TranslucentBackground, True)  # 透明背景
         self._usage = (0, 0.0, None)
         self._quota = None

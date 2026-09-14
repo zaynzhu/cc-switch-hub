@@ -56,6 +56,13 @@ def test_widget_dual_ring_colors(qapp):
     assert w._ring._weekly_ratio == 0.3
 
 
+def test_tooltip_enabled_without_activation(qapp):
+    from PySide6.QtCore import Qt
+    w = UsageWidget()
+    # 窄条从不激活，tooltip 依赖"未激活窗口也显示"开关（设在本窗口上）
+    assert w.testAttribute(Qt.WA_AlwaysShowToolTips)
+
+
 def test_widget_clamps_offscreen_right(qapp):
     from PySide6.QtWidgets import QApplication
     w = UsageWidget()
