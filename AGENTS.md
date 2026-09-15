@@ -29,7 +29,7 @@ Windows 任务栏窄条 + macOS 菜单栏常驻用量条，显示 Claude Code（
 
 **Windows UI**：
 - `src/widget.py`：`UsageWidget` 无边框窗口（`update_data`、`RingWidget` 双进度环自绘水位+档位色、`_detail_lines` 详情行供 tooltip/右键共用、`_stale` 变灰、`moved` / `refresh_requested` 信号）
-- `src/main.py` 的 `run_windows()`：30s/5min QTimer、`QuotaWorker`(QThread) 后台额度、托盘、位置记忆、开机自启勾选项（写启动文件夹 `.lnk`，`frozen` 分叉：打包态指 exe / 脚本态 `pythonw.exe`）
+- `src/main.py` 的 `run_windows()`：30s/1min QTimer、`QuotaWorker`(QThread) 后台额度、托盘、位置记忆、开机自启勾选项（写启动文件夹 `.lnk`，`frozen` 分叉：打包态指 exe / 脚本态 `pythonw.exe`）
 
 **macOS UI**：
 - `src/mac_text.py`：纯函数 `build_title`（常驻文字保留 token、花费与双百分比，仅省略 5h / 周标签，如 69.4M $0.03 · 0% · 100%） / `ring_ratio` / `build_menu_items`（不依赖 rumps，Windows 可测）

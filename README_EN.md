@@ -25,7 +25,7 @@
 - **Windows taskbar strip** — frameless always-on-top, dual progress rings (inner = 5h usage, outer = weekly usage, each colored by tier green/amber/red/grey) + usage text, hugging the taskbar
 - **macOS menubar** — built with rumps, monochrome dual-ring icon (inner = 5h usage, outer = weekly usage) + usage text, click for full details
 - **Today's usage** — tokens, estimated cost, recent model, refreshes every 30s
-- **Package quota level** — Kimi / Zhipu GLM / Ollama Cloud legacy 5-hour window & weekly quota %, refreshes every 5min
+- **Package quota level** — Kimi / Zhipu GLM / Ollama Cloud legacy 5-hour window & weekly quota %, refreshes every 1min
 - **Status indicator** — Windows / Mac both use dual rings (inner 5h, outer weekly) fill ratio + tier color, gauge quota level at a glance
 - **Reuses cc-switch data** — reads cc-switch.db + settings.json + provider quota APIs, no reinvented wheels
 - **Quota failure tolerance** — keeps last data on API failure and marks it stale, never zeroes out
