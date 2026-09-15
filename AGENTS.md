@@ -19,6 +19,7 @@ Windows 任务栏窄条 + macOS 菜单栏常驻用量条，显示 Claude Code（
 ### 通用
 
 - 测试：`"E:/program/tool/python/python.exe" -m pytest tests/ -v`（根 `conftest.py` 已把 `src/` 加进 sys.path；Mac 端 rumps/AppKit 代码 Windows 跑不了，纯函数 `mac_text` 可测）
+- Mac 端测试：`python3 -m pytest tests/ --ignore=tests/test_widget.py`（`test_widget.py` 依赖 PySide6 会收集失败；AppKit 可用时 Cocoa 绘图测试实际运行，2026-09-15 实测 145 项通过）
 
 ## 模块结构
 

@@ -178,6 +178,8 @@ cd cc-switch-hub
 "E:/program/tool/python/python.exe" -m pytest tests/ -v
 ```
 
+macOS contributors must exclude the Windows-only module when running tests: `python3 -m pytest tests/ --ignore=tests/test_widget.py` (`test_widget.py` depends on PySide6).
+
 Fork → Branch → Commit (`type: description`) → PR.
 
 ## ⭐ Star History

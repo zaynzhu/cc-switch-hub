@@ -178,6 +178,8 @@ cd cc-switch-hub
 "E:/program/tool/python/python.exe" -m pytest tests/ -v
 ```
 
+macOS 贡献者跑测试需排除 Windows 专用模块：`python3 -m pytest tests/ --ignore=tests/test_widget.py`（`test_widget.py` 依赖 PySide6）。
+
 Fork → Branch → Commit（`type: 中文描述`）→ PR。
 
 ## ⭐ Star History
