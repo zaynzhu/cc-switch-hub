@@ -48,7 +48,10 @@ def test_weekly_is_outer_ring():
     empty = ring_pixels(0, 0)
     full = ring_pixels(0, 1)
     assert full[1] > empty[1] * 3
-    assert full[0] == pytest.approx(empty[0])
+    # 满外圈（线宽 2.6）描边抗锯齿尾巴会越过 6.4 分类边界，给 4 个
+    # 边界像素各带上约 1/255 的 alpha（实测内圈总差 0.0157），
+    # 容差放宽到单像素级；内外圈画反时内圈会差几十倍，仍能拦住。
+    assert full[0] == pytest.approx(empty[0], abs=0.05)
 
 
 def test_quarter_ring_is_clockwise_and_not_three_quarters():
