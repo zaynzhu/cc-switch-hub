@@ -142,6 +142,8 @@ The API provides no reset timestamps. Continuous monitoring of a real legacy acc
 
 No. This project's data comes 100% from cc-switch's local store (`~/.cc-switch/cc-switch.db` + `settings.json`). Without cc-switch (and without using it to route a third-party provider), the strip / menubar item only shows `--` placeholders. This project is a companion visualizer for cc-switch.
 
+Also note: today's usage is written into the db by the cc-switch main app's session-log sync; this tool only reads it. If cc-switch is not running in the background, today's data will not update (showing 0 / `--`) and recovers within a few minutes of launching cc-switch.
+
 </details>
 
 <details>

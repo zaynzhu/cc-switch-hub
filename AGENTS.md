@@ -43,6 +43,7 @@ Windows 任务栏窄条 + macOS 菜单栏常驻用量条，显示 Claude Code（
 
 ### 通用（数据层）
 - db 路径 `~/.cc-switch/cc-switch.db`，**只读连接** `file:{path}?mode=ro` + `uri=True`。
+- **今日用量数据由 cc-switch 主应用的会话日志同步写入**（读 `~/.claude/projects/**/*.jsonl` 转成 `proxy_request_logs` 行，`data_source='session_log'`）。主应用未运行 → 同步停止 → 窄条显示 0 / $0.00 / `--`，**这不是本项目 bug**：先查 cc-switch 进程，再排数据层。
 - **`proxy_request_logs.provider_id` 是占位值 `'_session'`**，不存真实厂商标识 → 今日用量**全部汇总**，不要改回按厂商过滤。
 - 当前激活厂商读 `~/.cc-switch/settings.json` 的 `currentProviderClaude`（id）→ db 查 base_url / token。**不要用 db 的 `is_current`**（实测动态变化、不可靠）。
 - **智谱额度接口 Authorization 不加 Bearer**（Kimi 要加）。URL `{base}/api/monitor/usage/quota/limit`，解析 `data.limits[]` 里 `type==TOKENS_LIMIT`、`unit==3`→5h / `unit==6`→周。

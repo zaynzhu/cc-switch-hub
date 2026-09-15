@@ -142,6 +142,8 @@ hdiutil create -volname "cc-switch-hub" -srcfolder dist/cc-switch-hub.app -ov -f
 
 不能。本项目数据 100% 来自 cc-switch 本地库（`~/.cc-switch/cc-switch.db` + `settings.json`）。不装 cc-switch 且没用它接入第三方厂商，窄条 / 菜单栏只显示占位 `--`。本项目是 cc-switch 的伴侣可视化工具。
 
+另外：db 里的今日用量由 cc-switch 主应用的会话日志同步写入，本工具只读不写。若 cc-switch 未在后台运行，今日数据不会更新（显示 0 / `--`），启动 cc-switch 后等几分钟即恢复。
+
 </details>
 
 <details>
