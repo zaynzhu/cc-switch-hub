@@ -3,7 +3,7 @@
 - icon：单色双环，内圈=5h 已用比例，外圈=周已用比例
 - title：'{token} {cost} · {h5_pct} · {weekly_pct}'
 - 菜单：详情 + 立即刷新 / 退出
-- 30s 刷用量、5min 后台线程查额度，主线程刷 UI
+- 30s 刷用量、1min 后台线程查额度，主线程刷 UI
 """
 import os, threading, subprocess
 import rumps
@@ -17,7 +17,7 @@ from quota_fetcher import get_current_provider, fetch_quota
 DB_PATH = os.path.expanduser('~/.cc-switch/cc-switch.db')
 SETTINGS_JSON_PATH = os.path.expanduser('~/.cc-switch/settings.json')
 USAGE_INTERVAL = 30        # 秒
-QUOTA_INTERVAL = 5 * 60    # 秒
+QUOTA_INTERVAL = 60        # 秒
 LA_LABEL = 'com.zaynzhu.cc-switch-hub'  # 开机自启 LaunchAgent 标签
 LA_PLIST = os.path.expanduser('~/Library/LaunchAgents/com.zaynzhu.cc-switch-hub.plist')
 

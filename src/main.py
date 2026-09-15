@@ -11,7 +11,7 @@ if getattr(sys, 'frozen', False):
 else:
     SETTINGS_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'settings.json')
 USAGE_INTERVAL = 30 * 1000      # 30 秒
-QUOTA_INTERVAL = 5 * 60 * 1000  # 5 分钟
+QUOTA_INTERVAL = 60 * 1000      # 1 分钟
 
 # 持有运行中的 QuotaWorker，防止 Python 包装对象被 GC 后 Qt 销毁运行中的线程
 _workers = set()
