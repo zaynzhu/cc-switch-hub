@@ -1,13 +1,13 @@
 """仅使用合成响应和临时 Provider 库，不读取真实账号或联网。"""
 import json
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from urllib.error import HTTPError, URLError
 
 import pytest
 
 import quota_fetcher as fetcher
-from display_text import build_display_text
+from display_text import build_display_text, format_reset_line
 from mac_text import build_title, build_menu_items, ring_ratio
 from test_quota_fetcher import _FakeResp, _make_providers_db_full, _kimi_cfg
 
@@ -54,9 +54,15 @@ def test_request_and_display(monkeypatch):
         return _FakeResp(json.dumps(payload()).encode())
     monkeypatch.setattr('urllib.request.urlopen', request)
     quota = fetcher.fetch_quota('https://ollama.com/v1', 'synthetic-key', timeout=7)
-    # h5：接口无重置时间，reset 与来源都未知，不猜测
-    assert quota['h5'] == {'used': 0.234 * 100, 'limit': 100,
-                           'reset': None, 'reset_source': None}
+    # h5：接口不返回 reset_at，按实测固定 5h cadence 推算，来源 estimated
+    now_before = datetime.now(timezone.utc)
+    assert quota['h5']['used'] == 0.234 * 100
+    assert quota['h5']['limit'] == 100
+    assert quota['h5']['reset_source'] == 'estimated'
+    h5_reset = datetime.fromisoformat(quota['h5']['reset'])
+    assert h5_reset.tzinfo is not None
+    assert h5_reset.timestamp() % (5 * 3600) == 0  # 落在 5h bucket 边界
+    assert now_before < h5_reset <= now_before + timedelta(hours=5)
     # weekly：reset 存 UTC ISO 字符串（带时区），来源标注 estimated
     assert quota['weekly']['used'] == 81
     assert quota['weekly']['limit'] == 100
@@ -68,7 +74,8 @@ def test_request_and_display(monkeypatch):
     assert build_title(0, 0, 23.4, 100, 81, 100) == '0 $0.00 · 23% · 81%'
     assert ring_ratio(quota['h5']['used'], 100) == pytest.approx(0.234)
     items = build_menu_items(0, 0, None, quota, True)
-    assert items[3] == '5h: 23% 重置 --'
+    assert items[3].startswith('5h: 23% 预计重置 ')
+    assert '本地推算' in items[3]
     assert items[4].startswith('周: 81% 预计重置 ')
     assert '本地推算' in items[4]
     assert items[5] == '(额度数据已过期)'
@@ -141,6 +148,41 @@ def test_next_weekly_reset(now, expected):
     assert reset.tzinfo is not None        # timezone-aware
     assert reset.utcoffset().total_seconds() == 0  # 统一 UTC
     assert reset > now_dt                   # 严格晚于 now
+
+
+@pytest.mark.parametrize(('now', 'expected'), [
+    # 实测边界：UTC 05:00 / 10:00 / 15:00 / 20:00（北京时间 13/18/23/04 点）
+    ('2026-09-14T04:59:59+00:00', '2026-09-14T05:00:00+00:00'),
+    ('2026-09-14T05:00:00+00:00', '2026-09-14T10:00:00+00:00'),  # 恰在边界 → 下一个
+    ('2026-09-14T09:59:59+00:00', '2026-09-14T10:00:00+00:00'),
+    ('2026-09-14T10:00:00+00:00', '2026-09-14T15:00:00+00:00'),
+    ('2026-09-14T14:59:59+00:00', '2026-09-14T15:00:00+00:00'),
+    ('2026-09-14T15:00:00+00:00', '2026-09-14T20:00:00+00:00'),
+    ('2026-09-14T19:59:59+00:00', '2026-09-14T20:00:00+00:00'),
+    ('2026-09-14T20:00:00+00:00', '2026-09-15T01:00:00+00:00'),  # 跨日
+    ('2026-09-14T12:59:59+08:00', '2026-09-14T05:00:00+00:00'),  # 非零时区输入
+    ('2026-09-30T23:30:00+00:00', '2026-10-01T02:00:00+00:00'),  # 跨月
+    ('2026-12-31T23:00:00+00:00', '2027-01-01T04:00:00+00:00'),  # 跨年
+])
+def test_next_session_reset(now, expected):
+    """实账号连续验证：session 重置为固定 5h cadence，边界与 5h Unix timestamp bucket 对齐。
+    5h 不整除 24h，窗口跨日持续推进（09-30 21:00 边界的下一个是 10-01 02:00）。"""
+    now_dt = datetime.fromisoformat(now)
+    expected_dt = datetime.fromisoformat(expected)
+    reset = fetcher.next_ollama_session_reset(now_dt)
+    assert reset == expected_dt
+    assert reset.tzinfo is not None               # timezone-aware
+    assert reset.utcoffset().total_seconds() == 0  # 统一 UTC
+    assert reset > now_dt                          # 严格晚于 now
+
+
+def test_session_reset_local_display():
+    """数据层存 UTC，展示层复用现有 format_reset_line 转北京时间并标本地推算。"""
+    reset = fetcher.next_ollama_session_reset(
+        datetime.fromisoformat('2026-09-15T00:30:00+00:00'))
+    assert reset.isoformat() == '2026-09-15T01:00:00+00:00'
+    assert format_reset_line(reset.isoformat(), 'estimated') == \
+        '预计重置 2026-09-15 09:00 北京时间（本地推算）'
 
 
 def test_rate_limit(monkeypatch, response):

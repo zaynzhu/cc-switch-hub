@@ -205,6 +205,20 @@ def next_ollama_weekly_reset(now_utc):
     return reset
 
 
+def next_ollama_session_reset(now_utc):
+    """严格晚于 now 的下一个 5 小时 Unix timestamp bucket 边界（timezone-aware UTC）。
+
+    已用真实 legacy Ollama Cloud 账号连续验证：session 重置遵循固定 5 小时
+    cadence，观测边界严格相差 5h（如 UTC 05:00 → 10:00 → 15:00 → 20:00），
+    与 5 小时 Unix timestamp bucket 对齐。5h 不整除 24h，窗口跨日持续推进，
+    不得写死每天固定小时列表。接口本身不返回 reset_at，该时间仍属客户端
+    按已验证规则推算（reset_source='estimated'），显示层再转本机时区。"""
+    window_seconds = 5 * 60 * 60
+    timestamp = int(now_utc.timestamp())
+    return datetime.fromtimestamp(
+        (timestamp // window_seconds + 1) * window_seconds, tz=timezone.utc)
+
+
 def fetch_ollama_quota(api_key, timeout=10):
     """查询 Ollama Cloud legacy 未文档化接口，结构不符或失败返回 None。"""
     if not isinstance(api_key, str) or not api_key.strip():
@@ -223,13 +237,14 @@ def fetch_ollama_quota(api_key, timeout=10):
             if (isinstance(usage, bool) or not isinstance(usage, (int, float))
                     or not 0 <= usage <= 1):
                 return None
+        now_utc = datetime.now(timezone.utc)
         return {
-            # session 只给使用率不给窗口起点：reset 暂时保持未知，不做任何推算
+            # session 无 reset_at 字段：按实测固定 5h cadence 推算下一边界
             'h5': {'used': session * 100, 'limit': 100,
-                   'reset': None, 'reset_source': None},
+                   'reset': next_ollama_session_reset(now_utc).isoformat(),
+                   'reset_source': 'estimated'},
             'weekly': {'used': weekly * 100, 'limit': 100,
-                       'reset': next_ollama_weekly_reset(
-                           datetime.now(timezone.utc)).isoformat(),
+                       'reset': next_ollama_weekly_reset(now_utc).isoformat(),
                        'reset_source': 'estimated'},
         }
     except Exception:

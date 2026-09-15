@@ -49,14 +49,14 @@ Windows 任务栏窄条 + macOS 菜单栏常驻用量条，显示 Claude Code（
 - 不识别厂商或查询失败返回 None；从未成功时显示未知，已有数据则沿用 stale（Windows 变灰、macOS 变淡并在菜单标记），勿清空。
 
 - Ollama Cloud legacy：仅识别 `ollama.com` 主机，复用当前 Provider 的真实 `ANTHROPIC_AUTH_TOKEN`，Bearer 请求固定 `https://ollama.com/api/usage`。`limits.session/weekly.usage` 为 0～1 已用比例，映射 `used=usage*100, limit=100`；缺字段、非数值、越界或请求失败返回 None。新增请求按服务限流，两秒内重复调用返回 None，沿用 stale。
-- 所有 tier 带 `reset_source`（`api` = 接口真实返回 / `estimated` = 客户端推算 / None = 未知）。Ollama weekly 已实账号验证周一 00:00 UTC 刷新 → `next_ollama_weekly_reset(now)` 纯函数算严格晚于 now 的周一，数据层存 UTC ISO，**不得写死北京时间**，展示层 `format_reset_line` 转北京并标`预计重置…（本地推算）`。Ollama session：窗口起点规则未验证，**不做任何 5h 推算**（current+5h、usage>0 当起点、quota_state.json 持久化都禁）→ `reset=None, reset_source=None` 显示 `--`；后续确认固定 epoch 后再加 `next_ollama_session_reset`。
+- 所有 tier 带 `reset_source`（`api` = 接口真实返回 / `estimated` = 客户端推算 / None = 未知）。Ollama weekly 已实账号验证周一 00:00 UTC 刷新 → `next_ollama_weekly_reset(now)` 纯函数算严格晚于 now 的周一；Ollama session 已实账号连续监控验证固定 5h cadence（边界如 UTC 05:00/10:00/15:00/20:00，与 5 小时 Unix timestamp bucket 对齐）→ `next_ollama_session_reset(now)` 纯函数算严格晚于 now 的 bucket 边界，恰在边界时取下一个。两者接口都不返回 reset_at，只能标 `estimated` **不得标 `api`**；5h 不整除 24h、窗口跨日推进，**不得写死每天固定小时列表**；数据层存 UTC ISO、**不得写死北京时间**，展示层 `format_reset_line` 转北京并标`预计重置…（本地推算）`。
 
 ### Windows
 - QThread 必须用集合（`_workers`）持有引用直到 `finished`，否则被 GC 触发 `QThread destroyed while running` 启动崩溃。
 - 富文本 QLabel 会拦截鼠标事件导致拖不动 → `WA_TransparentForMouseEvents`；富文本不支持 `AlignVCenter` → 圆点与文字拆双纯文本 label。
 - 开机自启用 `getattr(sys,'frozen',False)` 分叉：打包态（PyInstaller onefile）`sys.executable` 即 exe，快捷方式直接指它、无 Arguments；脚本态才找 `pythonw.exe` + `main.py`。写 `.lnk` 走 PowerShell `WScript.Shell` COM（`subprocess` 调 `powershell -NoProfile -Command`），无新依赖。
 - 进度环 `RingWidget` 双环用 QPainter 画弧（`QRectF`+`drawArc`，从 12 点 90° 顺时针），内圈=5h、外圈=周额度，各环独立取档位色（不取两档较高值），几何对齐 `mac_bar.ring_image`（半径 0.235/0.415，Windows 18px、线宽 1.8/2.4 留 ≥1px 环间空隙）。无额度只画轨道、stale 灰弧保留上次水位。
-- 右键菜单顶部详情行（置灰不可点）与 tooltip 共用 `_detail_lines()`，含 5h/周重置时间；Ollama 不提供 5h 重置时间显示 `--` 属预期。
+- 右键菜单顶部详情行（置灰不可点）与 tooltip 共用 `_detail_lines()`，含 5h/周重置时间；Ollama 5h 重置为本地推算（estimated），显示`预计重置…（本地推算）`。
 - 未激活 Tool 窗口 tooltip 悬停不显示（Windows 默认只给激活窗口出 tooltip，窄条 `WA_ShowWithoutActivating` 永不激活）→ 顶级窗口设 `WA_AlwaysShowToolTips`；注意 `QApplication` 不是 QWidget 没有 `setAttribute`，该开关设在窗口 widget 上。
 - 托盘图标用 `ripple.ico`，`_resource_path` 定位：打包态从 `sys._MEIPASS` 读、脚本态从 `build/` 读；`win_build.ps1` 必须 `--add-data` 把 ico 打进 exe，否则打包态 `QIcon` 加载不到。
 - 位置记忆 `SETTINGS_PATH` 必须 frozen 分叉：打包态（onefile）`__file__` 指向 `_MEIPASS` 临时解压目录、退出即删，记忆写那里等于每次启动清零（用户"拖了白拖"）；打包态改存 exe 同目录（`settings.json` 已被 .gitignore 全局忽略）。记忆带 `screen` 屏幕归属，恢复时校验坐标仍归属记忆屏（`resolve_restore_pos`），布局变化回主屏默认；无有效记忆时 `place_default` 固定用 `QApplication.primaryScreen()` 顶部居中，**不要用 `screenAt(窗口当前位置)` 判屏**（启动时序漂移会吸附到错误的屏）。

@@ -89,7 +89,8 @@ def test_ollama_display_and_stale(qapp, monkeypatch):
     w.update_data((0, 0, None), quota)
     assert w._text_label.text().endswith('5h 23% · 周 81%')
     assert '本地推算' in w.toolTip()
-    assert f"5h: {quota['h5']['used']}/100 重置 --" in w.toolTip()
+    # h5 详情行也带推算重置（5h cadence 实测验证），不再是'重置 --'
+    assert f"5h: {quota['h5']['used']}/100 预计重置 " in w.toolTip()
     # 双环独立着色：内圈 5h 23% 绿、外圈周 81% 橙
     assert w._ring._h5_color == COLORS['normal']
     assert w._ring._weekly_color == COLORS['orange']

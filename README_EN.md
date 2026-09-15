@@ -133,7 +133,7 @@ Quota follows `currentProviderClaude` in `settings.json`, reusing that provider'
 
 The undocumented `/api/usage` endpoint reports session / weekly `usage` as fractions from 0 to 1. For example, `0.234 / 0.81` displays as `5h 23% · 周 81%` on Windows; the macOS title shows `23% · 81%` after tokens and cost. Network, authorization, schema or field errors retain the last quota and mark it stale. Repeated refreshes within two seconds do not issue another request.
 
-The API provides no reset timestamps. Session reset remains `--`. Weekly reset is estimated locally as the next Monday **00:00 UTC (08:00 Beijing time)**, displayed in Beijing time and explicitly labeled `本地推算` (local estimate) in details. This is not an API timestamp or a session reset estimate.
+The API provides no reset timestamps. Continuous monitoring of a real legacy account has verified the rules: the 5h session is a fixed global 5-hour window (boundaries exactly 5h apart, e.g. 13:00 → 18:00 → 23:00 → 04:00 Beijing time), and the weekly window refreshes Monday **00:00 UTC (08:00 Beijing time)**. Both reset times are estimated locally from these verified rules — the 5h reset is the next 5-hour boundary strictly after the current time, the weekly reset the next Monday 00:00 UTC. Details display them in Beijing time and explicitly label them `本地推算` (local estimate). They are not API timestamps.
 
 ## ❓ FAQ
 
